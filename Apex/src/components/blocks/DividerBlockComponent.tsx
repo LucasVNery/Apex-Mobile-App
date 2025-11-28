@@ -8,29 +8,45 @@ interface DividerBlockComponentProps {
   blockId: string;
   onDelete?: () => void;
   showDragHandle?: boolean;
+  isSelected?: boolean;
+  isSelectionMode?: boolean;
+  onPress?: () => void;
+  onLongPress?: () => void;
 }
 
 export function DividerBlockComponent({
   blockId,
   onDelete,
   showDragHandle = false,
+  isSelected = false,
+  isSelectionMode = false,
+  onPress,
+  onLongPress,
 }: DividerBlockComponentProps) {
-  const handleLongPress = () => {
-    if (onDelete) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      onDelete();
+  const handleContainerPress = () => {
+    if (isSelectionMode && onPress) {
+      onPress();
+    }
+  };
+
+  const handleContainerLongPress = () => {
+    // Sempre chama onLongPress se existir (para iniciar/continuar seleção)
+    if (onLongPress) {
+      onLongPress();
     }
   };
 
   return (
-    <BaseBlock showDragHandle={showDragHandle}>
-      <Pressable
-        onLongPress={handleLongPress}
-        delayLongPress={500}
-        style={styles.container}
-      >
+    <BaseBlock
+      showDragHandle={showDragHandle}
+      isSelected={isSelected}
+      isSelectionMode={isSelectionMode}
+      onPress={handleContainerPress}
+      onLongPress={handleContainerLongPress}
+    >
+      <View style={styles.container}>
         <View style={styles.divider} />
-      </Pressable>
+      </View>
     </BaseBlock>
   );
 }

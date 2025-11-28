@@ -15,6 +15,10 @@ interface CalloutBlockComponentProps {
   onIconChange?: (icon: string) => void;
   onDelete?: () => void;
   showDragHandle?: boolean;
+  isSelected?: boolean;
+  isSelectionMode?: boolean;
+  onPress?: () => void;
+  onLongPress?: () => void;
 }
 
 const CALLOUT_ICONS: Array<{ name: keyof typeof Ionicons.glyphMap; label: string }> = [
@@ -35,16 +39,13 @@ export function CalloutBlockComponent({
   onIconChange,
   onDelete,
   showDragHandle = false,
+  isSelected = false,
+  isSelectionMode = false,
+  onPress,
+  onLongPress,
 }: CalloutBlockComponentProps) {
   const [text, setText] = useState(content);
   const [showIconPicker, setShowIconPicker] = useState(false);
-
-  const handleLongPress = () => {
-    if (onDelete) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      onDelete();
-    }
-  };
 
   const handleTextChange = (newText: string) => {
     setText(newText);
@@ -56,24 +57,51 @@ export function CalloutBlockComponent({
     setShowIconPicker(false);
   };
 
+  const handleContainerPress = () => {
+    if (isSelectionMode && onPress) {
+      onPress();
+    }
+  };
+
+  const handleContainerLongPress = () => {
+    // Sempre chama onLongPress se existir (para iniciar/continuar seleção)
+    if (onLongPress) {
+      onLongPress();
+    }
+  };
+
   return (
-    <BaseBlock showDragHandle={showDragHandle}>
-      <Pressable
-        onLongPress={handleLongPress}
-        delayLongPress={500}
-        style={styles.pressableContainer}
-      >
+    <BaseBlock
+      showDragHandle={showDragHandle}
+      isSelected={isSelected}
+      isSelectionMode={isSelectionMode}
+      onPress={handleContainerPress}
+      onLongPress={handleContainerLongPress}
+    >
+      <View style={styles.pressableContainer}>
         <View style={[styles.container, { borderLeftColor: color }]}>
-          <Pressable
-            onPress={() => setShowIconPicker(!showIconPicker)}
-            style={[styles.iconButton, { backgroundColor: color + '20' }]}
-          >
-            <Ionicons
-              name={icon as keyof typeof Ionicons.glyphMap}
-              size={24}
-              color={color}
-            />
-          </Pressable>
+          {!isSelectionMode && (
+            <Pressable
+              onPress={() => setShowIconPicker(!showIconPicker)}
+              style={[styles.iconButton, { backgroundColor: color + '20' }]}
+            >
+              <Ionicons
+                name={icon as keyof typeof Ionicons.glyphMap}
+                size={24}
+                color={color}
+              />
+            </Pressable>
+          )}
+
+          {isSelectionMode && (
+            <View style={[styles.iconButton, { backgroundColor: color + '20' }]}>
+              <Ionicons
+                name={icon as keyof typeof Ionicons.glyphMap}
+                size={24}
+                color={color}
+              />
+            </View>
+          )}
 
           <TextInput
             style={styles.input}
@@ -82,9 +110,10 @@ export function CalloutBlockComponent({
             placeholder="Digite uma observação..."
             placeholderTextColor={theme.colors.text.tertiary}
             multiline
+            editable={!isSelectionMode}
           />
 
-          {showIconPicker && (
+          {showIconPicker && !isSelectionMode && (
             <View style={styles.iconPicker}>
               {CALLOUT_ICONS.map((iconItem) => (
                 <Pressable
@@ -101,7 +130,7 @@ export function CalloutBlockComponent({
             </View>
           )}
         </View>
-      </Pressable>
+      </View>
     </BaseBlock>
   );
 }

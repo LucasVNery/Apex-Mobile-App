@@ -5,6 +5,7 @@ import { Text } from '@/src/components/ui/Text';
 import { theme } from '@/src/theme';
 import { LinkParser } from '@/src/utils/linkParser';
 import { NoteLink } from '@/src/types/note.types';
+import { useDoubleTap } from '@/src/hooks/useDoubleTap';
 import * as Haptics from 'expo-haptics';
 
 interface EditableTextBlockProps {
@@ -19,6 +20,10 @@ interface EditableTextBlockProps {
   multiline?: boolean;
   existingNotes?: { id: string; title: string }[];
   showDragHandle?: boolean;
+  isSelected?: boolean;
+  isSelectionMode?: boolean;
+  onPress?: () => void;
+  onLongPress?: () => void;
 }
 
 export interface EditableTextBlockRef {
@@ -40,6 +45,10 @@ export const EditableTextBlock = forwardRef<EditableTextBlockRef, EditableTextBl
       multiline = true,
       existingNotes = [],
       showDragHandle = false,
+      isSelected = false,
+      isSelectionMode = false,
+      onPress,
+      onLongPress,
     },
     ref
   ) => {
@@ -89,13 +98,6 @@ export const EditableTextBlock = forwardRef<EditableTextBlockRef, EditableTextBl
     onBlur?.();
   };
 
-  const handleLongPress = () => {
-    if (onDelete) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      onDelete();
-    }
-  };
-
   // Renderiza texto com links destacados
   const renderTextWithHighlights = () => {
     if (!isFocused && text) {
@@ -122,26 +124,72 @@ export const EditableTextBlock = forwardRef<EditableTextBlockRef, EditableTextBl
     return null;
   };
 
+  const handleSingleTap = () => {
+    if (isSelectionMode && onPress) {
+      onPress();
+    }
+  };
+
+  const handleDoubleTap = () => {
+    if (!isSelectionMode && !isFocused) {
+      setIsFocused(true);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  };
+
+  const handleTap = useDoubleTap({
+    onSingleTap: handleSingleTap,
+    onDoubleTap: handleDoubleTap,
+    delay: 300,
+  });
+
+  const handleContainerPress = () => {
+    if (isSelectionMode) {
+      // No modo de seleção, responde imediatamente
+      handleSingleTap();
+    } else {
+      // Fora do modo de seleção, usa double-tap detection
+      handleTap();
+    }
+  };
+
+  const handleContainerLongPress = () => {
+    // Sempre chama onLongPress se existir (para iniciar/continuar seleção)
+    if (onLongPress) {
+      onLongPress();
+    }
+  };
+
   return (
-    <BaseBlock showDragHandle={showDragHandle} isActive={isFocused}>
-      <Pressable
-        onPress={() => {
-          if (!isFocused) {
-            setIsFocused(true);
-            setTimeout(() => inputRef.current?.focus(), 50);
-          }
-        }}
-        onLongPress={handleLongPress}
-        delayLongPress={500}
-        style={styles.container}
-      >
+    <BaseBlock
+      showDragHandle={showDragHandle}
+      isActive={isFocused}
+      isSelected={isSelected}
+      isSelectionMode={isSelectionMode}
+      onPress={handleContainerPress}
+      onLongPress={handleContainerLongPress}
+    >
+      <View style={styles.container}>
+        {/* Mostra highlights quando não focado e tem texto */}
         {!isFocused && text && renderTextWithHighlights()}
+
+        {/* Mostra placeholder visual quando vazio e não focado */}
+        {!isFocused && !text && (
+          <View style={styles.emptyPlaceholder}>
+            <Text variant="body" color="tertiary" style={styles.placeholderText}>
+              {placeholder}
+            </Text>
+          </View>
+        )}
+
+        {/* TextInput - sempre presente mas pode estar oculto */}
         <TextInput
           ref={inputRef}
           style={[
             styles.input,
             multiline && styles.multiline,
-            (!isFocused && text) && styles.hiddenInput
+            (!isFocused && text) && styles.hiddenInput,
+            (!isFocused && !text) && styles.hiddenInput
           ]}
           value={text}
           onChangeText={handleTextChange}
@@ -152,8 +200,9 @@ export const EditableTextBlock = forwardRef<EditableTextBlockRef, EditableTextBl
           autoFocus={autoFocus}
           multiline={multiline}
           textAlignVertical="top"
+          editable={!isSelectionMode}
         />
-      </Pressable>
+      </View>
     </BaseBlock>
   );
 });
@@ -191,5 +240,13 @@ const styles = StyleSheet.create({
     color: theme.colors.accent.primary,
     textDecorationLine: 'underline',
     fontWeight: '500',
+  },
+  emptyPlaceholder: {
+    padding: theme.spacing.sm,
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  placeholderText: {
+    fontSize: theme.typography.sizes.base,
   },
 });

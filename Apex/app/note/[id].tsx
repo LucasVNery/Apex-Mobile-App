@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,8 @@ import { Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
 import { Block } from '@/src/types/note.types';
+import * as Haptics from 'expo-haptics';
+import { ConfirmModal } from '@/src/components/ui/ConfirmModal';
 
 export default function NoteDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -16,6 +18,9 @@ export default function NoteDetailScreen() {
   // Use seletor para reagir a mudanças na nota
   const note = useNotesStore((state) => state.notes.find(n => n.id === id));
   const notes = useNotesStore((state) => state.notes);
+  const [selectedCount, setSelectedCount] = useState(0);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const deleteCallbackRef = useRef<(() => void) | null>(null);
 
   if (!note) {
     return (
@@ -43,6 +48,30 @@ export default function NoteDetailScreen() {
     updateNote(note.id, { title });
   };
 
+  const handleSelectionChange = (count: number, deleteCallback?: () => void) => {
+    setSelectedCount(count);
+    if (deleteCallback) {
+      deleteCallbackRef.current = deleteCallback;
+    }
+  };
+
+  const handleDeleteButtonPress = () => {
+    if (selectedCount === 0 || !deleteCallbackRef.current) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = () => {
+    deleteCallbackRef.current?.();
+    deleteCallbackRef.current = null;
+    setShowDeleteModal(false);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+  };
+
   // Prepara lista de notas existentes para link suggestion
   const existingNotes = notes.map((n) => ({
     id: n.id,
@@ -64,15 +93,31 @@ export default function NoteDetailScreen() {
             Voltar
           </Text>
         </Pressable>
-        <View style={styles.headerInfo}>
-          <Ionicons name="checkmark-circle" size={20} color={theme.colors.accent.success} />
-          <Text variant="caption" color="secondary">
-            Salvo
-          </Text>
-          {note.color && (
-            <View style={[styles.colorIndicator, { backgroundColor: note.color }]} />
-          )}
-        </View>
+
+        {selectedCount > 0 ? (
+          <View style={styles.selectionHeader}>
+            <Text variant="body" weight="semibold" color="primary">
+              {selectedCount} selecionado{selectedCount > 1 ? 's' : ''}
+            </Text>
+            <Pressable
+              onPress={handleDeleteButtonPress}
+              style={styles.deleteButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="trash-outline" size={24} color={theme.colors.accent.error} />
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.headerInfo}>
+            <Ionicons name="checkmark-circle" size={20} color={theme.colors.accent.success} />
+            <Text variant="caption" color="secondary">
+              Salvo
+            </Text>
+            {note.color && (
+              <View style={[styles.colorIndicator, { backgroundColor: note.color }]} />
+            )}
+          </View>
+        )}
       </View>
 
       {/* Editor */}
@@ -82,6 +127,21 @@ export default function NoteDetailScreen() {
         noteTitle={note.title}
         onTitleChange={handleTitleChange}
         existingNotes={existingNotes}
+        onSelectionChange={handleSelectionChange}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        visible={showDeleteModal}
+        title="Deletar blocos"
+        message={`Tem certeza que deseja deletar ${selectedCount} bloco${selectedCount > 1 ? 's' : ''}?`}
+        confirmText="Deletar"
+        cancelText="Cancelar"
+        confirmVariant="primary"
+        icon="trash-outline"
+        iconColor={theme.colors.accent.error}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
       />
     </SafeAreaView>
   );
@@ -120,9 +180,6 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
   },
-  backButtonText: {
-    color: theme.colors.accent.primary,
-  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -132,5 +189,20 @@ const styles = StyleSheet.create({
   },
   errorText: {
     textAlign: 'center',
+  },
+  backButton: {
+    marginTop: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.accent.primary,
+    borderRadius: theme.borderRadius.md,
+  },
+  selectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  deleteButton: {
+    padding: theme.spacing.xs,
   },
 });

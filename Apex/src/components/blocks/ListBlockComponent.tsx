@@ -13,6 +13,10 @@ interface ListBlockComponentProps {
   onItemsChange: (items: string[]) => void;
   onDelete?: () => void;
   showDragHandle?: boolean;
+  isSelected?: boolean;
+  isSelectionMode?: boolean;
+  onPress?: () => void;
+  onLongPress?: () => void;
 }
 
 export function ListBlockComponent({
@@ -22,15 +26,12 @@ export function ListBlockComponent({
   onItemsChange,
   onDelete,
   showDragHandle = false,
+  isSelected = false,
+  isSelectionMode = false,
+  onPress,
+  onLongPress,
 }: ListBlockComponentProps) {
   const [listItems, setListItems] = useState(items.length > 0 ? items : ['']);
-
-  const handleLongPress = () => {
-    if (onDelete) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      onDelete();
-    }
-  };
 
   const handleItemChange = (index: number, value: string) => {
     const newItems = [...listItems];
@@ -51,13 +52,28 @@ export function ListBlockComponent({
     onItemsChange(newItems);
   };
 
+  const handleContainerPress = () => {
+    if (isSelectionMode && onPress) {
+      onPress();
+    }
+  };
+
+  const handleContainerLongPress = () => {
+    // Sempre chama onLongPress se existir (para iniciar/continuar seleção)
+    if (onLongPress) {
+      onLongPress();
+    }
+  };
+
   return (
-    <BaseBlock showDragHandle={showDragHandle}>
-      <Pressable
-        onLongPress={handleLongPress}
-        delayLongPress={500}
-        style={styles.pressableContainer}
-      >
+    <BaseBlock
+      showDragHandle={showDragHandle}
+      isSelected={isSelected}
+      isSelectionMode={isSelectionMode}
+      onPress={handleContainerPress}
+      onLongPress={handleContainerLongPress}
+    >
+      <View style={styles.pressableContainer}>
         <View style={styles.container}>
           {listItems.map((item, index) => (
             <View key={index} style={styles.itemRow}>
@@ -73,8 +89,9 @@ export function ListBlockComponent({
                 autoFocus={index === listItems.length - 1 && item === ''}
                 onSubmitEditing={handleAddItem}
                 returnKeyType="next"
+                editable={!isSelectionMode}
               />
-              {listItems.length > 1 && (
+              {listItems.length > 1 && !isSelectionMode && (
                 <Pressable
                   onPress={() => handleRemoveItem(index)}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -88,18 +105,20 @@ export function ListBlockComponent({
               )}
             </View>
           ))}
-          <Pressable onPress={handleAddItem} style={styles.addButton}>
-            <Ionicons
-              name="add-circle-outline"
-              size={20}
-              color={theme.colors.accent.primary}
-            />
-            <Text variant="caption" style={styles.addText}>
-              Adicionar item
-            </Text>
-          </Pressable>
+          {!isSelectionMode && (
+            <Pressable onPress={handleAddItem} style={styles.addButton}>
+              <Ionicons
+                name="add-circle-outline"
+                size={20}
+                color={theme.colors.accent.primary}
+              />
+              <Text variant="caption" style={styles.addText}>
+                Adicionar item
+              </Text>
+            </Pressable>
+          )}
         </View>
-      </Pressable>
+      </View>
     </BaseBlock>
   );
 }

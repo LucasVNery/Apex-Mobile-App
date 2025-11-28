@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { TextInput, StyleSheet, Pressable } from 'react-native';
+import { TextInput, StyleSheet, View } from 'react-native';
 import { BaseBlock } from './BaseBlock';
 import { Text } from '@/src/components/ui/Text';
 import { theme } from '@/src/theme';
+import { useDoubleTap } from '@/src/hooks/useDoubleTap';
 import * as Haptics from 'expo-haptics';
 
 interface HeadingBlockProps {
@@ -13,6 +14,10 @@ interface HeadingBlockProps {
   onDelete?: () => void;
   autoFocus?: boolean;
   showDragHandle?: boolean;
+  isSelected?: boolean;
+  isSelectionMode?: boolean;
+  onPress?: () => void;
+  onLongPress?: () => void;
 }
 
 export function HeadingBlock({
@@ -23,6 +28,10 @@ export function HeadingBlock({
   onDelete,
   autoFocus = false,
   showDragHandle = false,
+  isSelected = false,
+  isSelectionMode = false,
+  onPress,
+  onLongPress,
 }: HeadingBlockProps) {
   const [text, setText] = useState(content);
   const [isFocused, setIsFocused] = useState(false);
@@ -30,13 +39,6 @@ export function HeadingBlock({
   const handleTextChange = (newText: string) => {
     setText(newText);
     onContentChange(newText);
-  };
-
-  const handleLongPress = () => {
-    if (onDelete) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      onDelete();
-    }
   };
 
   const getFontSize = () => {
@@ -50,15 +52,51 @@ export function HeadingBlock({
     }
   };
 
+  const handleSingleTap = () => {
+    if (isSelectionMode && onPress) {
+      onPress();
+    }
+  };
+
+  const handleDoubleTap = () => {
+    if (!isSelectionMode && !isFocused) {
+      setIsFocused(true);
+    }
+  };
+
+  const handleTap = useDoubleTap({
+    onSingleTap: handleSingleTap,
+    onDoubleTap: handleDoubleTap,
+    delay: 300,
+  });
+
+  const handleContainerPress = () => {
+    if (isSelectionMode) {
+      handleSingleTap();
+    } else {
+      handleTap();
+    }
+  };
+
+  const handleContainerLongPress = () => {
+    // Sempre chama onLongPress se existir (para iniciar/continuar seleção)
+    if (onLongPress) {
+      onLongPress();
+    }
+  };
+
   return (
-    <BaseBlock showDragHandle={showDragHandle} isActive={isFocused}>
-      <Pressable
-        onPress={() => !isFocused && setIsFocused(true)}
-        onLongPress={handleLongPress}
-        delayLongPress={500}
-        style={styles.container}
-      >
-        {!isFocused && text ? (
+    <BaseBlock
+      showDragHandle={showDragHandle}
+      isActive={isFocused}
+      isSelected={isSelected}
+      isSelectionMode={isSelectionMode}
+      onPress={handleContainerPress}
+      onLongPress={handleContainerLongPress}
+    >
+      <View style={styles.container}>
+        {/* Mostra texto quando não focado e tem conteúdo */}
+        {!isFocused && text && (
           <Text
             variant="heading"
             weight="bold"
@@ -66,7 +104,24 @@ export function HeadingBlock({
           >
             {text}
           </Text>
-        ) : (
+        )}
+
+        {/* Mostra placeholder quando vazio e não focado */}
+        {!isFocused && !text && (
+          <View style={styles.emptyPlaceholder}>
+            <Text
+              variant="heading"
+              weight="bold"
+              color="tertiary"
+              style={[styles.placeholderText, { fontSize: getFontSize() }]}
+            >
+              {`Título ${level}`}
+            </Text>
+          </View>
+        )}
+
+        {/* TextInput - mostra apenas quando focado */}
+        {isFocused && (
           <TextInput
             style={[
               styles.input,
@@ -76,13 +131,14 @@ export function HeadingBlock({
             value={text}
             onChangeText={handleTextChange}
             onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          placeholder={`Título ${level}`}
-          placeholderTextColor={theme.colors.text.tertiary}
-          autoFocus={autoFocus}
-        />
-      )}
-      </Pressable>
+            onBlur={() => setIsFocused(false)}
+            placeholder={`Título ${level}`}
+            placeholderTextColor={theme.colors.text.tertiary}
+            autoFocus={autoFocus}
+            editable={!isSelectionMode}
+          />
+        )}
+      </View>
     </BaseBlock>
   );
 }
@@ -101,5 +157,13 @@ const styles = StyleSheet.create({
   },
   headingInput: {
     minHeight: 44,
+  },
+  emptyPlaceholder: {
+    padding: theme.spacing.sm,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  placeholderText: {
+    opacity: 0.5,
   },
 });

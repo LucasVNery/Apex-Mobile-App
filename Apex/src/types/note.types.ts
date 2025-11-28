@@ -7,6 +7,7 @@ export interface BaseBlock {
   updatedAt: number;  // Timestamp em vez de Date
   order: number;
   parentId?: string;
+  selected?: boolean; // Estado de seleção do bloco
 }
 
 export interface TextBlock extends BaseBlock {

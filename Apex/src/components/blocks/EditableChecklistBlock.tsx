@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
 import { v4 as uuidv4 } from 'uuid';
 import { ChecklistItem } from '@/src/types/note.types';
+import { BaseBlock } from './BaseBlock';
 import * as Haptics from 'expo-haptics';
 
 interface EditableChecklistBlockProps {
@@ -13,6 +14,10 @@ interface EditableChecklistBlockProps {
   onItemsChange: (items: ChecklistItem[]) => void;
   onDelete?: () => void;
   showDragHandle?: boolean;
+  isSelected?: boolean;
+  isSelectionMode?: boolean;
+  onPress?: () => void;
+  onLongPress?: () => void;
 }
 
 export function EditableChecklistBlock({
@@ -21,15 +26,12 @@ export function EditableChecklistBlock({
   onItemsChange,
   onDelete,
   showDragHandle = false,
+  isSelected = false,
+  isSelectionMode = false,
+  onPress,
+  onLongPress,
 }: EditableChecklistBlockProps) {
   const [newItemText, setNewItemText] = useState('');
-
-  const handleLongPress = () => {
-    if (onDelete) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      onDelete();
-    }
-  };
 
   const toggleItem = (itemId: string) => {
     const updatedItems = items.map((item) =>
@@ -63,19 +65,29 @@ export function EditableChecklistBlock({
     setNewItemText('');
   };
 
-  return (
-    <Pressable
-      onLongPress={handleLongPress}
-      delayLongPress={500}
-      style={styles.container}
-    >
-      {showDragHandle && (
-        <View style={styles.dragHandle}>
-          <Ionicons name="menu" size={20} color={theme.colors.text.tertiary} />
-        </View>
-      )}
+  const handleContainerPress = () => {
+    if (isSelectionMode && onPress) {
+      onPress();
+    }
+  };
 
-      <View style={styles.content}>
+  const handleContainerLongPress = () => {
+    // Sempre chama onLongPress se existir (para iniciar/continuar seleção)
+    if (onLongPress) {
+      onLongPress();
+    }
+  };
+
+  return (
+    <BaseBlock
+      showDragHandle={showDragHandle}
+      isSelected={isSelected}
+      isSelectionMode={isSelectionMode}
+      onPress={handleContainerPress}
+      onLongPress={handleContainerLongPress}
+    >
+      <View style={styles.pressableContainer}>
+        <View style={styles.content}>
         {/* Items existentes */}
         {items.map((item) => (
           <View key={item.id} style={styles.itemRow}>
@@ -83,6 +95,7 @@ export function EditableChecklistBlock({
               style={styles.checkboxContainer}
               onPress={() => toggleItem(item.id)}
               activeOpacity={0.7}
+              disabled={isSelectionMode}
             >
               <View style={[styles.checkbox, item.completed && styles.checkboxCompleted]}>
                 {item.completed && (
@@ -97,51 +110,50 @@ export function EditableChecklistBlock({
               onChangeText={(text) => updateItemText(item.id, text)}
               placeholder="Item da checklist"
               placeholderTextColor={theme.colors.text.tertiary}
+              editable={!isSelectionMode}
             />
 
-            <Pressable onPress={() => deleteItem(item.id)} style={styles.deleteButton}>
-              <Ionicons name="close-circle" size={20} color={theme.colors.text.tertiary} />
-            </Pressable>
+            {!isSelectionMode && (
+              <Pressable onPress={() => deleteItem(item.id)} style={styles.deleteButton}>
+                <Ionicons name="close-circle" size={20} color={theme.colors.text.tertiary} />
+              </Pressable>
+            )}
           </View>
         ))}
 
         {/* Input para novo item */}
-        <View style={styles.newItemRow}>
-          <View style={styles.checkboxContainer}>
-            <View style={styles.checkbox} />
+        {!isSelectionMode && (
+          <View style={styles.newItemRow}>
+            <View style={styles.checkboxContainer}>
+              <View style={styles.checkbox} />
+            </View>
+
+            <TextInput
+              style={styles.itemInput}
+              value={newItemText}
+              onChangeText={setNewItemText}
+              placeholder="Adicionar item..."
+              placeholderTextColor={theme.colors.text.tertiary}
+              onSubmitEditing={addNewItem}
+              returnKeyType="done"
+            />
+
+            {newItemText.length > 0 && (
+              <Pressable onPress={addNewItem} style={styles.addButton}>
+                <Ionicons name="add-circle" size={20} color={theme.colors.accent.primary} />
+              </Pressable>
+            )}
           </View>
-
-          <TextInput
-            style={styles.itemInput}
-            value={newItemText}
-            onChangeText={setNewItemText}
-            placeholder="Adicionar item..."
-            placeholderTextColor={theme.colors.text.tertiary}
-            onSubmitEditing={addNewItem}
-            returnKeyType="done"
-          />
-
-          {newItemText.length > 0 && (
-            <Pressable onPress={addNewItem} style={styles.addButton}>
-              <Ionicons name="add-circle" size={20} color={theme.colors.accent.primary} />
-            </Pressable>
-          )}
-        </View>
+        )}
       </View>
-    </Pressable>
+      </View>
+    </BaseBlock>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    marginBottom: theme.spacing.md,
-  },
-  dragHandle: {
-    width: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing.xs,
+  pressableContainer: {
+    width: '100%',
   },
   content: {
     flex: 1,

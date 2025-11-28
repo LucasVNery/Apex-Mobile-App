@@ -16,6 +16,7 @@ import { BlockMenu } from './BlockMenu';
 import { LinkSuggestionPopup } from './LinkSuggestionPopup';
 import { useProgressionStore } from '@/src/stores/useProgressionStore';
 import { useNotesStore } from '@/src/stores/useNotesStore';
+import { useBlockSelection } from '@/src/hooks/useBlockSelection';
 import * as Haptics from 'expo-haptics';
 
 interface BlockEditorProps {
@@ -24,6 +25,7 @@ interface BlockEditorProps {
   noteTitle: string;
   onTitleChange: (title: string) => void;
   existingNotes?: { id: string; title: string; blocks?: any[] }[];
+  onSelectionChange?: (selectedCount: number, deleteCallback?: () => void) => void;
 }
 
 export function BlockEditor({
@@ -32,6 +34,7 @@ export function BlockEditor({
   noteTitle,
   onTitleChange,
   existingNotes = [],
+  onSelectionChange,
 }: BlockEditorProps) {
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const [showLinkSuggestion, setShowLinkSuggestion] = useState(false);
@@ -41,6 +44,7 @@ export function BlockEditor({
 
   const { unlockedFeatures, incrementBlocks } = useProgressionStore();
   const { addNote } = useNotesStore();
+  const blockSelection = useBlockSelection();
   const scrollViewRef = useRef<ScrollView>(null);
   const blockRefsMap = useRef<Map<string, EditableTextBlockRef>>(new Map());
 
@@ -94,6 +98,58 @@ export function BlockEditor({
       block.order = index;
     });
     onBlocksChange(newBlocks);
+  };
+
+  const removeSelectedBlocks = () => {
+    // Captura o estado atual dos IDs selecionados
+    const currentSelectedIds = new Set(blockSelection.selectedBlockIds);
+
+    if (currentSelectedIds.size === 0) return;
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    const newBlocks = blocks.filter(
+      (block) => !currentSelectedIds.has(block.id)
+    );
+
+    // Atualiza ordem
+    newBlocks.forEach((block, index) => {
+      block.order = index;
+    });
+
+    onBlocksChange(newBlocks);
+    blockSelection.clearSelection();
+
+    // Notifica o pai sobre a mudança
+    onSelectionChange?.(0);
+  };
+
+  const handleBlockPress = (blockId: string) => {
+    if (blockSelection.isSelectionMode) {
+      // Modo de seleção ativo: toggle seleção
+      Haptics.selectionAsync();
+
+      const isCurrentlySelected = blockSelection.isBlockSelected(blockId);
+      blockSelection.toggleBlockSelection(blockId);
+
+      // Calcula o novo count baseado no estado atual
+      const newCount = isCurrentlySelected
+        ? blockSelection.getSelectedCount() - 1
+        : blockSelection.getSelectedCount() + 1;
+
+      onSelectionChange?.(newCount, removeSelectedBlocks);
+    }
+  };
+
+  const handleBlockLongPress = (blockId: string) => {
+    // Long press inicia modo de seleção
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    if (!blockSelection.isSelectionMode) {
+      // Primeiro long press - inicia modo de seleção
+      blockSelection.selectBlock(blockId);
+      onSelectionChange?.(1, removeSelectedBlocks);
+    }
   };
 
   const handleTextChange = (blockId: string, content: string, links?: NoteLink[]) => {
@@ -173,6 +229,9 @@ export function BlockEditor({
   };
 
   const renderBlock = (block: Block) => {
+    const isSelected = blockSelection.isBlockSelected(block.id);
+    const isSelectionMode = blockSelection.isSelectionMode;
+
     switch (block.type) {
       case 'text':
         return (
@@ -192,6 +251,10 @@ export function BlockEditor({
             existingNotes={existingNotes}
             showDragHandle
             onFocus={() => setActiveBlockId(block.id)}
+            isSelected={isSelected}
+            isSelectionMode={isSelectionMode}
+            onPress={() => handleBlockPress(block.id)}
+            onLongPress={() => handleBlockLongPress(block.id)}
           />
         );
 
@@ -205,6 +268,10 @@ export function BlockEditor({
             onContentChange={(content) => updateBlock(block.id, { content } as any)}
             onDelete={() => removeBlock(block.id)}
             showDragHandle
+            isSelected={isSelected}
+            isSelectionMode={isSelectionMode}
+            onPress={() => handleBlockPress(block.id)}
+            onLongPress={() => handleBlockLongPress(block.id)}
           />
         );
 
@@ -218,6 +285,10 @@ export function BlockEditor({
             onItemsChange={(items) => updateBlock(block.id, { items } as any)}
             onDelete={() => removeBlock(block.id)}
             showDragHandle
+            isSelected={isSelected}
+            isSelectionMode={isSelectionMode}
+            onPress={() => handleBlockPress(block.id)}
+            onLongPress={() => handleBlockLongPress(block.id)}
           />
         );
 
@@ -230,6 +301,10 @@ export function BlockEditor({
             onItemsChange={(items) => updateBlock(block.id, { items } as any)}
             onDelete={() => removeBlock(block.id)}
             showDragHandle
+            isSelected={isSelected}
+            isSelectionMode={isSelectionMode}
+            onPress={() => handleBlockPress(block.id)}
+            onLongPress={() => handleBlockLongPress(block.id)}
           />
         );
 
@@ -244,11 +319,15 @@ export function BlockEditor({
             onContentChange={(content) => updateBlock(block.id, { content } as any)}
             onDelete={() => removeBlock(block.id)}
             showDragHandle
+            isSelected={isSelected}
+            isSelectionMode={isSelectionMode}
+            onPress={() => handleBlockPress(block.id)}
+            onLongPress={() => handleBlockLongPress(block.id)}
           />
         );
 
       case 'divider':
-        return <DividerBlockComponent key={block.id} blockId={block.id} onDelete={() => removeBlock(block.id)} showDragHandle />;
+        return <DividerBlockComponent key={block.id} blockId={block.id} onDelete={() => removeBlock(block.id)} showDragHandle isSelected={isSelected} isSelectionMode={isSelectionMode} onPress={() => handleBlockPress(block.id)} onLongPress={() => handleBlockLongPress(block.id)} />;
 
       default:
         return null;
@@ -275,6 +354,9 @@ export function BlockEditor({
           onContentChange={(content) => onTitleChange(content)}
           multiline={false}
           autoFocus={!noteTitle}
+          showDragHandle={false}
+          isSelected={false}
+          isSelectionMode={false}
         />
 
         {/* Blocks */}
