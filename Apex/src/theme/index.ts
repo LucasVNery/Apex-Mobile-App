@@ -19,6 +19,7 @@ export const theme = {
       secondary: '#66BB6A',    // Verde mais claro para variações
       success: '#4CAF50',      // Verde para sucesso
       warning: '#FF9800',      // Destaque Secundário (Laranja/Amarelo)
+      error: '#F44336',        // Vermelho para erro/ações destrutivas
     },
     border: {
       light: '#2A2A2A',        // Bordas sutis no tema escuro

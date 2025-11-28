@@ -1,16 +1,16 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Text } from '@/src/components/ui/Text';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import { FadeIn } from '@/src/components/animations/FadeIn';
+import { ScreenContainer } from '@/src/components/layout';
 import { theme } from '@/src/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function FreeScreen() {
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <ScreenContainer>
         <FadeIn>
           <View style={styles.header}>
             <Text variant="title" weight="semibold" color="secondary">
@@ -58,20 +58,11 @@ export default function FreeScreen() {
         >
           Criar Documento Livre
         </Button>
-      </ScrollView>
-    </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    padding: theme.spacing.lg,
-    paddingTop: 40,
-  },
   header: {
     marginBottom: theme.spacing.lg,
   },

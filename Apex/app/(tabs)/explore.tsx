@@ -1,16 +1,15 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet } from 'react-native';
 import { Text } from '@/src/components/ui/Text';
 import { Card } from '@/src/components/ui/Card';
 import { FadeIn, SlideIn } from '@/src/components/animations';
+import { ScreenContainer } from '@/src/components/layout';
 import { theme } from '@/src/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function ExploreScreen() {
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <ScreenContainer withTabBar>
         <FadeIn>
           <View style={styles.header}>
             <Text variant="heading" weight="bold">
@@ -87,19 +86,11 @@ export default function ExploreScreen() {
             </View>
           </SlideIn>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    padding: theme.spacing.lg,
-  },
   header: {
     marginBottom: theme.spacing.lg,
   },

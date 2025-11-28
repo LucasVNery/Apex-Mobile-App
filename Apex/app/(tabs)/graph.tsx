@@ -1,16 +1,15 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/src/components/ui/Text';
 import { Card } from '@/src/components/ui/Card';
 import { FadeIn } from '@/src/components/animations/FadeIn';
+import { ScreenContainer } from '@/src/components/layout';
 import { theme } from '@/src/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function GraphScreen() {
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.content}>
+    <ScreenContainer scrollable={false} withTabBar>
         <FadeIn>
           <View style={styles.header}>
             <Text variant="heading" weight="bold">
@@ -50,20 +49,11 @@ export default function GraphScreen() {
             </View>
           </Card>
         </FadeIn>
-      </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    flex: 1,
-    padding: theme.spacing.lg,
-  },
   header: {
     marginBottom: theme.spacing.lg,
   },

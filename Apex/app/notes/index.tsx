@@ -5,6 +5,7 @@ import { NoteList } from '@/src/components/notes/NoteList';
 import { Input } from '@/src/components/ui/Input';
 import { Button } from '@/src/components/ui/Button';
 import { FadeIn } from '@/src/components/animations/FadeIn';
+import { ScreenContainer } from '@/src/components/layout';
 import { theme } from '@/src/theme';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -13,7 +14,7 @@ export default function NotesScreen() {
   const notes = getFilteredNotes();
 
   return (
-    <View style={styles.container}>
+    <ScreenContainer scrollable={false}>
       <FadeIn>
         <View style={styles.header}>
           <Input
@@ -39,16 +40,11 @@ export default function NotesScreen() {
         </View>
       </FadeIn>
       <NoteList notes={notes} />
-    </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-    paddingTop: 40,
-  },
   header: {
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.md,

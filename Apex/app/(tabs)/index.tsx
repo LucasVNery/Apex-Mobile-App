@@ -1,22 +1,24 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useNotesStore } from '@/src/stores/useNotesStore';
+import { useProgressionStore } from '@/src/stores/useProgressionStore';
 import { Text } from '@/src/components/ui/Text';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import { FadeIn, SlideIn } from '@/src/components/animations';
+import { ScreenContainer } from '@/src/components/layout';
 import { theme } from '@/src/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const { notes } = useNotesStore();
+  const { notesCreated, linksCreated, level } = useProgressionStore();
   const isEmpty = notes.length === 0;
 
   if (isEmpty) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <ScreenContainer scrollable={false} withTabBar>
         <View style={styles.emptyContainer}>
           <FadeIn>
             <View style={styles.emptyContent}>
@@ -46,13 +48,12 @@ export default function HomeScreen() {
             </View>
           </FadeIn>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <ScreenContainer withTabBar>
         <FadeIn>
           <View style={styles.header}>
             <Text variant="heading" weight="bold">
@@ -71,7 +72,7 @@ export default function HomeScreen() {
                 <Ionicons name="document-text" size={24} color={theme.colors.accent.primary} />
               </View>
               <Text variant="title" weight="bold" style={styles.statNumber}>
-                {notes.length}
+                {notesCreated}
               </Text>
               <Text variant="caption" color="secondary">
                 Notas
@@ -82,13 +83,13 @@ export default function HomeScreen() {
           <SlideIn delay={150} direction="up">
             <Card style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: theme.colors.accent.warning + '20' }]}>
-                <Ionicons name="grid" size={24} color={theme.colors.accent.warning} />
+                <Ionicons name="link-outline" size={24} color={theme.colors.accent.warning} />
               </View>
               <Text variant="title" weight="bold" style={styles.statNumber}>
-                0
+                {linksCreated}
               </Text>
               <Text variant="caption" color="secondary">
-                Ambientes
+                Conexões
               </Text>
             </Card>
           </SlideIn>
@@ -96,13 +97,13 @@ export default function HomeScreen() {
           <SlideIn delay={200} direction="right">
             <Card style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: theme.colors.accent.secondary + '20' }]}>
-                <Ionicons name="color-wand" size={24} color={theme.colors.accent.secondary} />
+                <Ionicons name="trending-up-outline" size={24} color={theme.colors.accent.secondary} />
               </View>
               <Text variant="title" weight="bold" style={styles.statNumber}>
-                0
+                Nível {level}
               </Text>
               <Text variant="caption" color="secondary">
-                Livres
+                Progressão
               </Text>
             </Card>
           </SlideIn>
@@ -147,19 +148,11 @@ export default function HomeScreen() {
             </View>
           </View>
         </SlideIn>
-      </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    padding: theme.spacing.lg,
-  },
   header: {
     marginBottom: theme.spacing.lg,
   },

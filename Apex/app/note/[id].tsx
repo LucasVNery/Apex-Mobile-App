@@ -1,87 +1,88 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { View, StyleSheet } from 'react-native';
+import { useLocalSearchParams, router } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotesStore } from '@/src/stores/useNotesStore';
 import { Text } from '@/src/components/ui/Text';
-import { TextBlockComponent } from '@/src/components/blocks/TextBlock';
-import { ChecklistBlockComponent } from '@/src/components/blocks/ChecklistBlock';
-import { FadeIn } from '@/src/components/animations/FadeIn';
-import { SlideIn } from '@/src/components/animations/SlideIn';
+import { BlockEditor } from '@/src/components/editor/BlockEditor';
+import { Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
+import { Block } from '@/src/types/note.types';
 
 export default function NoteDetailScreen() {
   const { id } = useLocalSearchParams();
-  const { getNoteById } = useNotesStore();
-  const note = getNoteById(id as string);
+  const { updateNote } = useNotesStore();
+  // Use seletor para reagir a mudanças na nota
+  const note = useNotesStore((state) => state.notes.find(n => n.id === id));
+  const notes = useNotesStore((state) => state.notes);
 
   if (!note) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.errorContainer}>
-          <Text variant="title" weight="semibold" color="tertiary">
+          <Ionicons name="document-outline" size={64} color={theme.colors.text.tertiary} />
+          <Text variant="title" weight="semibold" color="tertiary" style={styles.errorText}>
             Nota não encontrada
           </Text>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Text variant="body" style={styles.backButtonText}>
+              Voltar
+            </Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const handleBlocksChange = (blocks: Block[]) => {
+    updateNote(note.id, { blocks });
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <FadeIn>
-          {note.color && (
-            <View style={[styles.colorBar, { backgroundColor: note.color }]} />
-          )}
-          <View style={styles.header}>
-            <Text variant="heading" weight="bold">
-              {note.title}
-            </Text>
-            <Text variant="caption" color="tertiary" style={styles.date}>
-              Atualizado em {formatDate(note.updatedAt)}
-            </Text>
-            {note.tags.length > 0 && (
-              <View style={styles.tags}>
-                {note.tags.map((tag) => (
-                  <View key={tag} style={styles.tag}>
-                    <Text variant="caption" color="secondary">
-                      #{tag}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        </FadeIn>
+  const handleTitleChange = (title: string) => {
+    updateNote(note.id, { title });
+  };
 
-        <View style={styles.content}>
-          {note.blocks.map((block, index) => (
-            <SlideIn key={block.id} delay={index * 50} direction="up">
-              {block.type === 'text' && <TextBlockComponent block={block} />}
-              {block.type === 'checklist' && <ChecklistBlockComponent block={block} />}
-              {block.type === 'heading' && (
-                <Text
-                  variant="title"
-                  weight="bold"
-                  style={styles.heading}
-                >
-                  {block.content}
-                </Text>
-              )}
-            </SlideIn>
-          ))}
+  // Prepara lista de notas existentes para link suggestion
+  const existingNotes = notes.map((n) => ({
+    id: n.id,
+    title: n.title,
+    blocks: n.blocks,
+  }));
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backButtonContainer}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+          <Text variant="body" weight="semibold" style={styles.backButtonText}>
+            Voltar
+          </Text>
+        </Pressable>
+        <View style={styles.headerInfo}>
+          <Ionicons name="checkmark-circle" size={20} color={theme.colors.accent.success} />
+          <Text variant="caption" color="secondary">
+            Salvo
+          </Text>
+          {note.color && (
+            <View style={[styles.colorIndicator, { backgroundColor: note.color }]} />
+          )}
         </View>
-      </ScrollView>
+      </View>
+
+      {/* Editor */}
+      <BlockEditor
+        blocks={note.blocks}
+        onBlocksChange={handleBlocksChange}
+        noteTitle={note.title}
+        onTitleChange={handleTitleChange}
+        existingNotes={existingNotes}
+      />
     </SafeAreaView>
   );
 }
@@ -91,42 +92,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background.primary,
   },
-  scrollContent: {
-    padding: theme.spacing.lg,
-  },
-  colorBar: {
-    height: 4,
-    marginBottom: theme.spacing.md,
-    borderRadius: theme.borderRadius.sm,
-  },
   header: {
-    marginBottom: theme.spacing.lg,
-  },
-  date: {
-    marginTop: theme.spacing.xs,
-  },
-  tags: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  backButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing.xs,
-    marginTop: theme.spacing.md,
+    padding: theme.spacing.xs,
   },
-  tag: {
-    backgroundColor: theme.colors.background.secondary,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
+  backButtonText: {
+    color: theme.colors.text.primary,
   },
-  content: {
+  headerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing.sm,
   },
-  heading: {
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+  colorIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  backButtonText: {
+    color: theme.colors.accent.primary,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: theme.spacing.xl,
+    gap: theme.spacing.md,
+  },
+  errorText: {
+    textAlign: 'center',
   },
 });
