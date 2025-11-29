@@ -1,4 +1,81 @@
-import { Note, NoteViewModel, NoteLink } from '@/src/types/note.types';
+import { Note, NoteViewModel, NoteLink, Block } from '@/src/types/note.types';
+
+/**
+ * Obtém timestamp atual (otimizado para chamadas em lote)
+ * Usa o mesmo timestamp se chamado múltiplas vezes no mesmo tick
+ */
+let lastTimestamp = 0;
+let lastTimestampTime = 0;
+
+export function getTimestamp(): number {
+  const now = Date.now();
+  // Se foi chamado no mesmo milissegundo, retorna o mesmo timestamp
+  if (now === lastTimestampTime) {
+    return lastTimestamp;
+  }
+  lastTimestampTime = now;
+  lastTimestamp = now;
+  return now;
+}
+
+/**
+ * Deep clone de objetos para evitar mutações
+ */
+export function deepClone<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (obj instanceof Date) {
+    return new Date(obj.getTime()) as T;
+  }
+
+  if (obj instanceof Array) {
+    return obj.map(item => deepClone(item)) as T;
+  }
+
+  if (obj instanceof Set) {
+    return new Set(Array.from(obj).map(item => deepClone(item))) as T;
+  }
+
+  if (obj instanceof Map) {
+    const clonedMap = new Map();
+    obj.forEach((value, key) => {
+      clonedMap.set(deepClone(key), deepClone(value));
+    });
+    return clonedMap as T;
+  }
+
+  const clonedObj = {} as T;
+  for (const key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      clonedObj[key] = deepClone(obj[key]);
+    }
+  }
+  return clonedObj;
+}
+
+/**
+ * Deep clone específico para blocos (mais performático)
+ */
+export function cloneBlock(block: Block): Block {
+  return {
+    ...block,
+    items: block.items ? [...block.items] : undefined,
+    links: block.links ? [...block.links] : undefined,
+  } as Block;
+}
+
+/**
+ * Deep clone específico para notas (mais performático)
+ */
+export function cloneNote(note: Note): Note {
+  return {
+    ...note,
+    blocks: note.blocks.map(cloneBlock),
+    tags: [...note.tags],
+  };
+}
 
 /**
  * Calcula os backlinks de uma nota (quais notas linkam para ela)
@@ -49,15 +126,54 @@ export function calculateConnections(noteId: string, allNotes: Note[]): number {
   return connections;
 }
 
+// Cache para ViewModel calculations
+const viewModelCache = new Map<string, { timestamp: number; viewModel: NoteViewModel }>();
+const CACHE_TTL = 5000; // 5 segundos de cache
+
 /**
- * Converte uma Note para NoteViewModel com campos calculados
+ * Limpa cache de ViewModels antigos
+ */
+function cleanViewModelCache() {
+  const now = Date.now();
+  for (const [key, value] of viewModelCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      viewModelCache.delete(key);
+    }
+  }
+}
+
+/**
+ * Converte uma Note para NoteViewModel com campos calculados (com cache)
  */
 export function toNoteViewModel(note: Note, allNotes: Note[]): NoteViewModel {
-  return {
+  // Cria chave de cache baseada no ID da nota e timestamp de atualização
+  const cacheKey = `${note.id}-${note.updatedAt}`;
+
+  // Verifica cache
+  const cached = viewModelCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.viewModel;
+  }
+
+  // Limpa cache periodicamente
+  if (viewModelCache.size > 100) {
+    cleanViewModelCache();
+  }
+
+  // Calcula ViewModel
+  const viewModel: NoteViewModel = {
     ...note,
     backlinks: calculateBacklinks(note.id, allNotes),
     connections: calculateConnections(note.id, allNotes),
   };
+
+  // Armazena no cache
+  viewModelCache.set(cacheKey, {
+    timestamp: Date.now(),
+    viewModel,
+  });
+
+  return viewModel;
 }
 
 /**
@@ -65,6 +181,13 @@ export function toNoteViewModel(note: Note, allNotes: Note[]): NoteViewModel {
  */
 export function toNoteViewModels(notes: Note[]): NoteViewModel[] {
   return notes.map((note) => toNoteViewModel(note, notes));
+}
+
+/**
+ * Limpa todo o cache de ViewModels (útil após updates massivos)
+ */
+export function clearViewModelCache() {
+  viewModelCache.clear();
 }
 
 /**

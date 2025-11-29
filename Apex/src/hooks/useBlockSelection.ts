@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Block } from '@/src/types/note.types';
 
 export interface BlockSelectionHook {
@@ -85,6 +85,14 @@ export function useBlockSelection(): BlockSelectionHook {
   const getSelectedCount = useCallback(() => {
     return selectedBlockIds.size;
   }, [selectedBlockIds]);
+
+  // Cleanup: limpa seleção quando o componente desmonta
+  useEffect(() => {
+    return () => {
+      setSelectedBlockIds(new Set());
+      setIsSelectionMode(false);
+    };
+  }, []);
 
   return {
     selectedBlockIds,

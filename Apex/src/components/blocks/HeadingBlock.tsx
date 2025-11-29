@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TextInput, StyleSheet, View } from 'react-native';
 import { BaseBlock } from './BaseBlock';
 import { Text } from '@/src/components/ui/Text';
@@ -36,7 +36,19 @@ export function HeadingBlock({
   const [text, setText] = useState(content);
   const [isFocused, setIsFocused] = useState(false);
 
+  // Sincroniza estado local com prop
+  useEffect(() => {
+    setText(content);
+  }, [content]);
+
   const handleTextChange = (newText: string) => {
+    // Detecta backspace em bloco vazio (deletar bloco)
+    if (newText === '' && text === '' && onDelete) {
+      // Bloco está vazio e usuário pressionou backspace
+      onDelete();
+      return;
+    }
+
     setText(newText);
     onContentChange(newText);
   };

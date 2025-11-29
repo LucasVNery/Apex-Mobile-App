@@ -10,8 +10,11 @@ import {
   countTotalLinks,
   countTotalBlocks,
   extractUniqueTags,
+  cloneNote,
+  getTimestamp,
 } from '../utils/noteHelpers';
 import { useProgressionStore } from './useProgressionStore';
+import { useCallback } from 'react';
 
 interface NotesState {
   notes: Note[];
@@ -81,22 +84,34 @@ export const useNotesStore = create<NotesState>()(
       },
 
       addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => {
-        const now = Date.now();
+        const now = getTimestamp();
         const newNote: Note = {
           ...note,
           id: uuidv4(), // Usar UUID em vez de Date.now()
-          createdAt: now,  // Timestamp
-          updatedAt: now,  // Timestamp
+          createdAt: now,  // Timestamp otimizado
+          updatedAt: now,  // Timestamp otimizado
         };
         set((state) => ({ notes: [newNote, ...state.notes] }));
         return newNote;
       },
 
       updateNote: (id: string, updatedNote: Partial<Note>) => {
+        const timestamp = getTimestamp();
         set((state) => ({
-          notes: state.notes.map((note) =>
-            note.id === id ? { ...note, ...updatedNote, updatedAt: Date.now() } : note
-          ),
+          notes: state.notes.map((note) => {
+            if (note.id === id) {
+              // Deep clone para evitar mutações
+              const updated = { ...note, ...updatedNote, updatedAt: timestamp };
+              if (updatedNote.blocks) {
+                updated.blocks = updatedNote.blocks.map(block => ({ ...block }));
+              }
+              if (updatedNote.tags) {
+                updated.tags = [...updatedNote.tags];
+              }
+              return updated;
+            }
+            return note;
+          }),
         }));
       },
 
@@ -136,3 +151,12 @@ export const useNotesStore = create<NotesState>()(
     }
   )
 );
+
+// Seletores memoizados para evitar re-renders desnecessários
+export const selectNotes = (state: NotesState) => state.notes;
+export const selectAddNote = (state: NotesState) => state.addNote;
+export const selectUpdateNote = (state: NotesState) => state.updateNote;
+export const selectDeleteNote = (state: NotesState) => state.deleteNote;
+export const selectGetNoteById = (state: NotesState) => state.getNoteById;
+export const selectGetFilteredNotes = (state: NotesState) => state.getFilteredNotes;
+export const selectGetAllNotesWithViewModels = (state: NotesState) => state.getAllNotesWithViewModels;

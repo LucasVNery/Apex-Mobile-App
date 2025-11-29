@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +21,13 @@ export default function NoteDetailScreen() {
   const [selectedCount, setSelectedCount] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const deleteCallbackRef = useRef<(() => void) | null>(null);
+
+  // Cleanup: limpa referência do deleteCallback quando o componente desmonta
+  useEffect(() => {
+    return () => {
+      deleteCallbackRef.current = null;
+    };
+  }, []);
 
   if (!note) {
     return (

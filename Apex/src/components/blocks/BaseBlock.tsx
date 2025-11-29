@@ -8,7 +8,9 @@ interface BaseBlockProps {
   children: ReactNode;
   onLongPress?: () => void;
   onPress?: () => void;
+  onDelete?: () => void;
   showDragHandle?: boolean;
+  showDeleteButton?: boolean;
   isActive?: boolean;
   isSelected?: boolean;
   isSelectionMode?: boolean;
@@ -19,7 +21,9 @@ export function BaseBlock({
   children,
   onLongPress,
   onPress,
+  onDelete,
   showDragHandle = false,
+  showDeleteButton = false,
   isActive = false,
   isSelected = false,
   isSelectionMode = false,
@@ -35,6 +39,11 @@ export function BaseBlock({
       Haptics.selectionAsync();
     }
     onPress?.();
+  };
+
+  const handleDelete = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onDelete?.();
   };
 
   return (
@@ -68,6 +77,17 @@ export function BaseBlock({
       <Pressable style={styles.content} onPress={handlePress} onLongPress={handleLongPress}>
         {children}
       </Pressable>
+
+      {/* Botão de delete (só mostra se showDeleteButton e não está em modo seleção) */}
+      {showDeleteButton && !isSelectionMode && onDelete && (
+        <Pressable
+          style={styles.deleteButton}
+          onPress={handleDelete}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="close-circle" size={20} color={theme.colors.text.tertiary} />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -123,5 +143,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     minHeight: 44, // Garante área de toque mínima mesmo para blocos vazios
+  },
+  deleteButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: theme.spacing.xs,
   },
 });

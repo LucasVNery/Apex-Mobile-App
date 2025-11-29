@@ -79,6 +79,13 @@ export const EditableTextBlock = forwardRef<EditableTextBlockRef, EditableTextBl
   }, [content]);
 
   const handleTextChange = (newText: string) => {
+    // Detecta backspace em bloco vazio (deletar bloco)
+    if (newText === '' && text === '' && onDelete) {
+      // Bloco está vazio e usuário pressionou backspace
+      onDelete();
+      return;
+    }
+
     setText(newText);
 
     // Detecta links no texto

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, TextInput, StyleSheet, Pressable } from 'react-native';
 import { BaseBlock } from './BaseBlock';
 import { Text } from '@/src/components/ui/Text';
@@ -47,7 +47,18 @@ export function CalloutBlockComponent({
   const [text, setText] = useState(content);
   const [showIconPicker, setShowIconPicker] = useState(false);
 
+  // Sincroniza estado local com prop
+  useEffect(() => {
+    setText(content);
+  }, [content]);
+
   const handleTextChange = (newText: string) => {
+    // Detecta backspace em bloco vazio (deletar bloco)
+    if (newText === '' && text === '' && onDelete) {
+      onDelete();
+      return;
+    }
+
     setText(newText);
     onContentChange(newText);
   };

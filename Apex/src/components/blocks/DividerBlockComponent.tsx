@@ -39,6 +39,8 @@ export function DividerBlockComponent({
   return (
     <BaseBlock
       showDragHandle={showDragHandle}
+      showDeleteButton={true}
+      onDelete={onDelete}
       isSelected={isSelected}
       isSelectionMode={isSelectionMode}
       onPress={handleContainerPress}

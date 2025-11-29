@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '@/src/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,9 +15,10 @@ import { ChecklistBlock as ChecklistBlockType } from '@/src/types/note.types';
 import { BlockMenu } from './BlockMenu';
 import { LinkSuggestionPopup } from './LinkSuggestionPopup';
 import { useProgressionStore } from '@/src/stores/useProgressionStore';
-import { useNotesStore } from '@/src/stores/useNotesStore';
+import { useNotesStore, selectAddNote } from '@/src/stores/useNotesStore';
 import { useBlockSelection } from '@/src/hooks/useBlockSelection';
 import * as Haptics from 'expo-haptics';
+import { getTimestamp } from '@/src/utils/noteHelpers';
 
 interface BlockEditorProps {
   blocks: Block[];
@@ -43,13 +44,23 @@ export function BlockEditor({
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>();
 
   const { unlockedFeatures, incrementBlocks } = useProgressionStore();
-  const { addNote } = useNotesStore();
+  const addNote = useNotesStore(selectAddNote);
   const blockSelection = useBlockSelection();
   const scrollViewRef = useRef<ScrollView>(null);
   const blockRefsMap = useRef<Map<string, EditableTextBlockRef>>(new Map());
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const addBlock = (type: BlockType, insertAfter?: string) => {
-    const now = Date.now();
+  // Cleanup do debounce timer
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const addBlock = useCallback((type: BlockType, insertAfter?: string) => {
+    const now = getTimestamp();
     const newBlock: Block = {
       id: uuidv4(),  // Usar UUID em vez de Date.now()
       type,
@@ -72,33 +83,40 @@ export function BlockEditor({
         ]
       : [...blocks, newBlock];
 
-    // Atualiza ordem
-    newBlocks.forEach((block, index) => {
-      block.order = index;
-    });
+    // Atualiza ordem (imutável)
+    const timestamp = getTimestamp();
+    const reorderedBlocks = newBlocks.map((block, index) => ({
+      ...block,
+      order: index,
+      updatedAt: timestamp
+    }));
 
-    onBlocksChange(newBlocks);
+    onBlocksChange(reorderedBlocks);
     incrementBlocks();
     setActiveBlockId(newBlock.id);
-  };
+  }, [blocks, onBlocksChange, incrementBlocks]);
 
-  const updateBlock = (blockId: string, updates: Partial<Block>) => {
+  const updateBlock = useCallback((blockId: string, updates: Partial<Block>) => {
+    const timestamp = getTimestamp();
     const newBlocks = blocks.map((block) =>
       block.id === blockId
-        ? { ...block, ...updates, updatedAt: Date.now() }  // Usar timestamp
+        ? { ...block, ...updates, updatedAt: timestamp }  // Usar timestamp otimizado
         : block
     );
     onBlocksChange(newBlocks);
-  };
+  }, [blocks, onBlocksChange]);
 
-  const removeBlock = (blockId: string) => {
+  const removeBlock = useCallback((blockId: string) => {
     const newBlocks = blocks.filter((block) => block.id !== blockId);
-    // Atualiza ordem
-    newBlocks.forEach((block, index) => {
-      block.order = index;
-    });
-    onBlocksChange(newBlocks);
-  };
+    // Atualiza ordem (imutável)
+    const timestamp = getTimestamp();
+    const reorderedBlocks = newBlocks.map((block, index) => ({
+      ...block,
+      order: index,
+      updatedAt: timestamp
+    }));
+    onBlocksChange(reorderedBlocks);
+  }, [blocks, onBlocksChange]);
 
   const removeSelectedBlocks = () => {
     // Captura o estado atual dos IDs selecionados
@@ -112,12 +130,15 @@ export function BlockEditor({
       (block) => !currentSelectedIds.has(block.id)
     );
 
-    // Atualiza ordem
-    newBlocks.forEach((block, index) => {
-      block.order = index;
-    });
+    // Atualiza ordem (imutável)
+    const timestamp = getTimestamp();
+    const reorderedBlocks = newBlocks.map((block, index) => ({
+      ...block,
+      order: index,
+      updatedAt: timestamp
+    }));
 
-    onBlocksChange(newBlocks);
+    onBlocksChange(reorderedBlocks);
     blockSelection.clearSelection();
 
     // Notifica o pai sobre a mudança
@@ -152,7 +173,7 @@ export function BlockEditor({
     }
   };
 
-  const handleTextChange = (blockId: string, content: string, links?: NoteLink[]) => {
+  const handleTextChange = useCallback((blockId: string, content: string, links?: NoteLink[]) => {
     // Detecta comando "/"
     if (content.endsWith('/')) {
       setShowBlockMenu(true);
@@ -171,8 +192,15 @@ export function BlockEditor({
       setShowLinkSuggestion(false);
     }
 
-    updateBlock(blockId, { content, links } as any);
-  };
+    // Debounce da atualização do bloco
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      updateBlock(blockId, { content, links } as any);
+    }, 150); // 150ms de debounce
+  }, [updateBlock]);
 
   const handleSelectBlockType = (type: BlockType) => {
     if (activeBlockId && activeBlockId !== 'title') {
