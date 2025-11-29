@@ -6,9 +6,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { theme } from '@/src/theme';
 import { Block, BlockType, NoteLink } from '@/src/types/note.types';
 import { EditableTextBlock, EditableTextBlockRef } from '../blocks/EditableTextBlock';
-import { HeadingBlock } from '../blocks/HeadingBlock';
+import { HeadingBlock, HeadingBlockRef } from '../blocks/HeadingBlock';
 import { ListBlockComponent } from '../blocks/ListBlockComponent';
-import { CalloutBlockComponent } from '../blocks/CalloutBlockComponent';
+import { CalloutBlockComponent, CalloutBlockRef } from '../blocks/CalloutBlockComponent';
 import { DividerBlockComponent } from '../blocks/DividerBlockComponent';
 import { EditableChecklistBlock } from '../blocks/EditableChecklistBlock';
 import { ChecklistBlock as ChecklistBlockType } from '@/src/types/note.types';
@@ -47,10 +47,9 @@ export function BlockEditor({
   const addNote = useNotesStore(selectAddNote);
   const blockSelection = useBlockSelection();
   const scrollViewRef = useRef<ScrollView>(null);
-  const blockRefsMap = useRef<Map<string, EditableTextBlockRef>>(new Map());
+  const blockRefsMap = useRef<Map<string, EditableTextBlockRef | HeadingBlockRef | CalloutBlockRef>>(new Map());
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Cleanup do debounce timer
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
@@ -62,10 +61,10 @@ export function BlockEditor({
   const addBlock = useCallback((type: BlockType, insertAfter?: string) => {
     const now = getTimestamp();
     const newBlock: Block = {
-      id: uuidv4(),  // Usar UUID em vez de Date.now()
+      id: uuidv4(),
       type,
-      createdAt: now,  // Timestamp
-      updatedAt: now,  // Timestamp
+      createdAt: now,
+      updatedAt: now,
       order: insertAfter
         ? blocks.findIndex((b) => b.id === insertAfter) + 1
         : blocks.length,
@@ -83,7 +82,6 @@ export function BlockEditor({
         ]
       : [...blocks, newBlock];
 
-    // Atualiza ordem (imutável)
     const timestamp = getTimestamp();
     const reorderedBlocks = newBlocks.map((block, index) => ({
       ...block,
@@ -108,7 +106,6 @@ export function BlockEditor({
 
   const removeBlock = useCallback((blockId: string) => {
     const newBlocks = blocks.filter((block) => block.id !== blockId);
-    // Atualiza ordem (imutável)
     const timestamp = getTimestamp();
     const reorderedBlocks = newBlocks.map((block, index) => ({
       ...block,
@@ -118,19 +115,18 @@ export function BlockEditor({
     onBlocksChange(reorderedBlocks);
   }, [blocks, onBlocksChange]);
 
-  const removeSelectedBlocks = () => {
-    // Captura o estado atual dos IDs selecionados
-    const currentSelectedIds = new Set(blockSelection.selectedBlockIds);
-
-    if (currentSelectedIds.size === 0) return;
+  const removeSelectedBlocks = useCallback((idsToRemove: string[]) => {
+    if (idsToRemove.length === 0) {
+      return;
+    }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+    const idsSet = new Set(idsToRemove);
     const newBlocks = blocks.filter(
-      (block) => !currentSelectedIds.has(block.id)
+      (block) => !idsSet.has(block.id)
     );
 
-    // Atualiza ordem (imutável)
     const timestamp = getTimestamp();
     const reorderedBlocks = newBlocks.map((block, index) => ({
       ...block,
@@ -141,47 +137,48 @@ export function BlockEditor({
     onBlocksChange(reorderedBlocks);
     blockSelection.clearSelection();
 
-    // Notifica o pai sobre a mudança
     onSelectionChange?.(0);
-  };
+  }, [blocks, onBlocksChange, blockSelection, onSelectionChange]);
 
   const handleBlockPress = (blockId: string) => {
     if (blockSelection.isSelectionMode) {
-      // Modo de seleção ativo: toggle seleção
       Haptics.selectionAsync();
 
       const isCurrentlySelected = blockSelection.isBlockSelected(blockId);
+      const currentSelectedIds = new Set(blockSelection.selectedBlockIds);
+      if (isCurrentlySelected) {
+        currentSelectedIds.delete(blockId);
+      } else {
+        currentSelectedIds.add(blockId);
+      }
+
       blockSelection.toggleBlockSelection(blockId);
 
-      // Calcula o novo count baseado no estado atual
-      const newCount = isCurrentlySelected
-        ? blockSelection.getSelectedCount() - 1
-        : blockSelection.getSelectedCount() + 1;
+      const newCount = currentSelectedIds.size;
 
-      onSelectionChange?.(newCount, removeSelectedBlocks);
+      const idsArray = Array.from(currentSelectedIds);
+      onSelectionChange?.(newCount, () => removeSelectedBlocks(idsArray));
     }
   };
 
   const handleBlockLongPress = (blockId: string) => {
-    // Long press inicia modo de seleção
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     if (!blockSelection.isSelectionMode) {
-      // Primeiro long press - inicia modo de seleção
       blockSelection.selectBlock(blockId);
-      onSelectionChange?.(1, removeSelectedBlocks);
+
+      const idsArray = [blockId];
+      onSelectionChange?.(1, () => removeSelectedBlocks(idsArray));
     }
   };
 
   const handleTextChange = useCallback((blockId: string, content: string, links?: NoteLink[]) => {
-    // Detecta comando "/"
     if (content.endsWith('/')) {
       setShowBlockMenu(true);
       setActiveBlockId(blockId);
       return;
     }
 
-    // Detecta início de link "[["
     if (content.includes('[[') && !content.includes(']]')) {
       const linkStart = content.lastIndexOf('[[');
       const query = content.substring(linkStart + 2);
@@ -192,19 +189,17 @@ export function BlockEditor({
       setShowLinkSuggestion(false);
     }
 
-    // Debounce da atualização do bloco
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
     debounceTimerRef.current = setTimeout(() => {
       updateBlock(blockId, { content, links } as any);
-    }, 150); // 150ms de debounce
+    }, 150);
   }, [updateBlock]);
 
   const handleSelectBlockType = (type: BlockType) => {
     if (activeBlockId && activeBlockId !== 'title') {
-      // Remove o "/" do texto se veio de um bloco existente
       const activeBlock = blocks.find((b) => b.id === activeBlockId);
       if (activeBlock && activeBlock.type === 'text') {
         const content = (activeBlock as any).content;
@@ -213,14 +208,23 @@ export function BlockEditor({
         } as any);
       }
 
-      // Adiciona novo bloco do tipo selecionado após o bloco ativo
       addBlock(type, activeBlockId);
     } else {
-      // Se não há activeBlockId ou é o título, adiciona ao final
       addBlock(type);
     }
     setShowBlockMenu(false);
   };
+
+  useEffect(() => {
+    if (activeBlockId && activeBlockId !== 'title') {
+      const blockRef = blockRefsMap.current.get(activeBlockId);
+      if (blockRef) {
+        setTimeout(() => {
+          blockRef.focus();
+        }, 100);
+      }
+    }
+  }, [activeBlockId, blocks.length]);
 
   const handleSelectLink = (noteId: string, noteTitle: string) => {
     if (activeBlockId) {
@@ -232,27 +236,20 @@ export function BlockEditor({
           content.substring(0, linkStart) + `[[${noteTitle}]] ` + content.substring(content.length);
 
         handleTextChange(activeBlockId, newContent);
-
-        // Mantém o foco no bloco para continuar editando
-        // Adiciona um espaço após o link para facilitar continuar digitando
       }
     }
     setShowLinkSuggestion(false);
   };
 
   const handleCreateNewNote = (title: string) => {
-    // Haptic feedback
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Cria novo ambiente
     const newNote = addNote({
       title: title.trim(),
-      blocks: [], // Começa vazio, usuário escolhe primeiro bloco
+      blocks: [],
       tags: [],
       color: theme.colors.accent.primary,
     });
-
-    // Insere link para o novo ambiente
     handleSelectLink(newNote.id, newNote.title);
   };
 
@@ -290,6 +287,13 @@ export function BlockEditor({
         return (
           <HeadingBlock
             key={block.id}
+            ref={(ref) => {
+              if (ref) {
+                blockRefsMap.current.set(block.id, ref);
+              } else {
+                blockRefsMap.current.delete(block.id);
+              }
+            }}
             blockId={block.id}
             content={(block as any).content || ''}
             level={(block as any).level || 1}
@@ -340,6 +344,13 @@ export function BlockEditor({
         return (
           <CalloutBlockComponent
             key={block.id}
+            ref={(ref) => {
+              if (ref) {
+                blockRefsMap.current.set(block.id, ref);
+              } else {
+                blockRefsMap.current.delete(block.id);
+              }
+            }}
             blockId={block.id}
             content={(block as any).content || ''}
             icon={(block as any).icon}
@@ -374,7 +385,6 @@ export function BlockEditor({
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Title Editor */}
         <EditableTextBlock
           blockId="title"
           content={noteTitle}
@@ -387,7 +397,6 @@ export function BlockEditor({
           isSelectionMode={false}
         />
 
-        {/* Blocks */}
         <View style={styles.blocksContainer}>
           {blocks.length === 0 ? (
             <View style={styles.emptyState}>
@@ -400,7 +409,6 @@ export function BlockEditor({
           )}
         </View>
 
-        {/* Add Block Button */}
         <Pressable style={styles.addButton} onPress={() => setShowBlockMenu(true)}>
           <Ionicons name="add-circle-outline" size={20} color={theme.colors.accent.primary} />
           <Text variant="body" style={styles.addButtonText}>
@@ -409,7 +417,6 @@ export function BlockEditor({
         </Pressable>
       </ScrollView>
 
-      {/* Block Menu */}
       {showBlockMenu && (
         <BlockMenu
           onSelectBlock={handleSelectBlockType}
@@ -419,7 +426,6 @@ export function BlockEditor({
         />
       )}
 
-      {/* Link Suggestion Popup */}
       {showLinkSuggestion && (
         <LinkSuggestionPopup
           query={linkQuery}
@@ -434,7 +440,6 @@ export function BlockEditor({
   );
 }
 
-// Componente auxiliar para Checklist (reutiliza ChecklistBlock existente)
 function ChecklistBlockComponent({
   blockId,
   items,
@@ -446,7 +451,6 @@ function ChecklistBlockComponent({
   onItemsChange: (items: any[]) => void;
   showDragHandle?: boolean;
 }) {
-  // Importa o componente existente
   const ChecklistBlockOrig = require('../blocks/ChecklistBlock').ChecklistBlock;
   return <ChecklistBlockOrig items={items} onItemsChange={onItemsChange} />;
 }

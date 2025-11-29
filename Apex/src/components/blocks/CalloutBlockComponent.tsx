@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { View, TextInput, StyleSheet, Pressable } from 'react-native';
 import { BaseBlock } from './BaseBlock';
 import { Text } from '@/src/components/ui/Text';
@@ -21,6 +21,11 @@ interface CalloutBlockComponentProps {
   onLongPress?: () => void;
 }
 
+export interface CalloutBlockRef {
+  blur: () => void;
+  focus: () => void;
+}
+
 const CALLOUT_ICONS: Array<{ name: keyof typeof Ionicons.glyphMap; label: string }> = [
   { name: 'bulb-outline', label: 'Ideia' },
   { name: 'information-circle-outline', label: 'Info' },
@@ -30,7 +35,7 @@ const CALLOUT_ICONS: Array<{ name: keyof typeof Ionicons.glyphMap; label: string
   { name: 'sparkles-outline', label: 'Destaque' },
 ];
 
-export function CalloutBlockComponent({
+export const CalloutBlockComponent = forwardRef<CalloutBlockRef, CalloutBlockComponentProps>(({
   blockId,
   content,
   icon = 'bulb-outline',
@@ -43,17 +48,25 @@ export function CalloutBlockComponent({
   isSelectionMode = false,
   onPress,
   onLongPress,
-}: CalloutBlockComponentProps) {
+}, ref) => {
   const [text, setText] = useState(content);
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
-  // Sincroniza estado local com prop
+  useImperativeHandle(ref, () => ({
+    blur: () => {
+      inputRef.current?.blur();
+    },
+    focus: () => {
+      setTimeout(() => inputRef.current?.focus(), 50);
+    },
+  }));
+
   useEffect(() => {
     setText(content);
   }, [content]);
 
   const handleTextChange = (newText: string) => {
-    // Detecta backspace em bloco vazio (deletar bloco)
     if (newText === '' && text === '' && onDelete) {
       onDelete();
       return;
@@ -75,7 +88,6 @@ export function CalloutBlockComponent({
   };
 
   const handleContainerLongPress = () => {
-    // Sempre chama onLongPress se existir (para iniciar/continuar seleção)
     if (onLongPress) {
       onLongPress();
     }
@@ -115,6 +127,7 @@ export function CalloutBlockComponent({
           )}
 
           <TextInput
+            ref={inputRef}
             style={styles.input}
             value={text}
             onChangeText={handleTextChange}
@@ -144,7 +157,9 @@ export function CalloutBlockComponent({
       </View>
     </BaseBlock>
   );
-}
+});
+
+CalloutBlockComponent.displayName = 'CalloutBlockComponent';
 
 const styles = StyleSheet.create({
   pressableContainer: {

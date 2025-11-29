@@ -118,7 +118,6 @@ export function BlockMenu({
   return (
     <View style={[styles.container, position && { top: position.y }]}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Basic Blocks */}
         <View style={styles.category}>
           <Text variant="caption" color="secondary" style={styles.categoryTitle}>
             Blocos Básicos
@@ -133,7 +132,6 @@ export function BlockMenu({
           ))}
         </View>
 
-        {/* Advanced Blocks */}
         {advancedBlocks.length > 0 && (
           <View style={styles.category}>
             <Text variant="caption" color="secondary" style={styles.categoryTitle}>
@@ -150,11 +148,10 @@ export function BlockMenu({
           </View>
         )}
 
-        {/* Locked Blocks */}
         {lockedBlocks.length > 0 && (
           <View style={styles.category}>
             <Text variant="caption" color="secondary" style={styles.categoryTitle}>
-              📊 Avançado
+              Avançado
             </Text>
             {lockedBlocks.map((item) => (
               <BlockMenuItem
@@ -230,6 +227,7 @@ function BlockMenuItem({ item, onPress, locked }: BlockMenuItemProps) {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
+    top: 10,
     left: theme.spacing.md,
     right: theme.spacing.md,
     backgroundColor: theme.colors.background.elevated,
@@ -241,10 +239,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 10,
-    maxHeight: 400,
+    maxHeight: 710,
   },
   scrollView: {
-    maxHeight: 400,
+    maxHeight: 710,
   },
   category: {
     paddingVertical: theme.spacing.sm,

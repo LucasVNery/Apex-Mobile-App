@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { TextInput, StyleSheet, View } from 'react-native';
 import { BaseBlock } from './BaseBlock';
 import { Text } from '@/src/components/ui/Text';
@@ -20,7 +20,12 @@ interface HeadingBlockProps {
   onLongPress?: () => void;
 }
 
-export function HeadingBlock({
+export interface HeadingBlockRef {
+  blur: () => void;
+  focus: () => void;
+}
+
+export const HeadingBlock = forwardRef<HeadingBlockRef, HeadingBlockProps>(({
   blockId,
   content,
   level,
@@ -32,19 +37,27 @@ export function HeadingBlock({
   isSelectionMode = false,
   onPress,
   onLongPress,
-}: HeadingBlockProps) {
+}, ref) => {
   const [text, setText] = useState(content);
   const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
-  // Sincroniza estado local com prop
+  useImperativeHandle(ref, () => ({
+    blur: () => {
+      inputRef.current?.blur();
+    },
+    focus: () => {
+      setIsFocused(true);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    },
+  }));
+
   useEffect(() => {
     setText(content);
   }, [content]);
 
   const handleTextChange = (newText: string) => {
-    // Detecta backspace em bloco vazio (deletar bloco)
     if (newText === '' && text === '' && onDelete) {
-      // Bloco está vazio e usuário pressionou backspace
       onDelete();
       return;
     }
@@ -73,6 +86,7 @@ export function HeadingBlock({
   const handleDoubleTap = () => {
     if (!isSelectionMode && !isFocused) {
       setIsFocused(true);
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
@@ -91,7 +105,6 @@ export function HeadingBlock({
   };
 
   const handleContainerLongPress = () => {
-    // Sempre chama onLongPress se existir (para iniciar/continuar seleção)
     if (onLongPress) {
       onLongPress();
     }
@@ -107,7 +120,6 @@ export function HeadingBlock({
       onLongPress={handleContainerLongPress}
     >
       <View style={styles.container}>
-        {/* Mostra texto quando não focado e tem conteúdo */}
         {!isFocused && text && (
           <Text
             variant="heading"
@@ -118,7 +130,6 @@ export function HeadingBlock({
           </Text>
         )}
 
-        {/* Mostra placeholder quando vazio e não focado */}
         {!isFocused && !text && (
           <View style={styles.emptyPlaceholder}>
             <Text
@@ -132,9 +143,9 @@ export function HeadingBlock({
           </View>
         )}
 
-        {/* TextInput - mostra apenas quando focado */}
         {isFocused && (
           <TextInput
+            ref={inputRef}
             style={[
               styles.input,
               { fontSize: getFontSize() },
@@ -153,7 +164,9 @@ export function HeadingBlock({
       </View>
     </BaseBlock>
   );
-}
+});
+
+HeadingBlock.displayName = 'HeadingBlock';
 
 const styles = StyleSheet.create({
   container: {

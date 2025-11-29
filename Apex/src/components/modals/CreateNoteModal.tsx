@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Modal, Pressable, TextInput } from 'react-native';
+import { View, StyleSheet, Modal, Pressable, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '@/src/components/ui/Text';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
@@ -45,22 +45,18 @@ export function CreateNoteModal({ visible, onClose }: CreateNoteModalProps) {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Cria a nota SEM blocos iniciais
     const newNote = addNote({
       title: noteTitle.trim(),
-      blocks: [], // Array vazio - usuário escolhe o primeiro bloco
+      blocks: [],
       tags: [],
       color: BLANK_TEMPLATE.color,
     });
 
-    // Incrementa progresso
     incrementNotes();
 
-    // Fecha modal
     onClose();
     resetModal();
 
-    // Navega para a nota
     router.push(`/note/${newNote.id}`);
   };
 
@@ -80,53 +76,59 @@ export function CreateNoteModal({ visible, onClose }: CreateNoteModalProps) {
       transparent
       onRequestClose={handleClose}
     >
-      <Pressable style={styles.overlay} onPress={handleClose}>
-        <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-          <Card style={styles.card}>
-            {/* Header */}
-            <View style={styles.header}>
-              <Text variant="title" weight="bold">
-                Criar Nova Nota
-              </Text>
-              <Pressable onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="close" size={24} color={theme.colors.text.secondary} />
-              </Pressable>
-            </View>
-
-            {/* Title Input */}
-            <View style={styles.titleContainer}>
-              <View style={[styles.selectedTemplateIcon, { backgroundColor: BLANK_TEMPLATE.color + '20' }]}>
-                <Ionicons name={BLANK_TEMPLATE.icon} size={40} color={BLANK_TEMPLATE.color} />
-              </View>
-              <TextInput
-                style={styles.titleInput}
-                value={noteTitle}
-                onChangeText={setNoteTitle}
-                placeholder={BLANK_TEMPLATE.placeholder}
-                placeholderTextColor={theme.colors.text.tertiary}
-                autoFocus
-                onSubmitEditing={handleCreate}
-                returnKeyType="done"
-              />
-              <Button
-                variant="primary"
-                onPress={handleCreate}
-                style={styles.createButton}
-                disabled={!noteTitle.trim()}
-              >
-                <Text weight="semibold" style={styles.createButtonText}>
-                  Criar Nota
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <Pressable style={styles.overlay} onPress={handleClose}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <Card style={styles.card}>
+              <View style={styles.header}>
+                <Text variant="title" weight="bold">
+                  Criar Nova Nota
                 </Text>
-              </Button>
-            </View>
-          </Card>
+                <Pressable onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={24} color={theme.colors.text.secondary} />
+                </Pressable>
+              </View>
+
+              <View style={styles.titleContainer}>
+                <View style={[styles.selectedTemplateIcon, { backgroundColor: BLANK_TEMPLATE.color + '20' }]}>
+                  <Ionicons name={BLANK_TEMPLATE.icon} size={40} color={BLANK_TEMPLATE.color} />
+                </View>
+                <TextInput
+                  style={styles.titleInput}
+                  value={noteTitle}
+                  onChangeText={setNoteTitle}
+                  placeholder={BLANK_TEMPLATE.placeholder}
+                  placeholderTextColor={theme.colors.text.tertiary}
+                  autoFocus
+                  onSubmitEditing={handleCreate}
+                  returnKeyType="done"
+                />
+                <Button
+                  variant="primary"
+                  onPress={handleCreate}
+                  style={styles.createButton}
+                  disabled={!noteTitle.trim()}
+                >
+                  <Text weight="semibold" style={styles.createButtonText}>
+                    Criar Nota
+                  </Text>
+                </Button>
+              </View>
+            </Card>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardView: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
