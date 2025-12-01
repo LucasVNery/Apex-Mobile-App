@@ -13,6 +13,19 @@ import {
   cloneNote,
   getTimestamp,
 } from '../utils/noteHelpers';
+import {
+  createChildNote as createChild,
+  addChildToParent as addChild,
+  removeChildFromParent as removeChild,
+  reorderChildren as reorder,
+  promoteToChild as promote,
+  deleteNoteAndDescendants as deleteWithDescendants,
+} from '../utils/hierarchyCRUD';
+import {
+  isRoot,
+  getChildren,
+  getAncestors,
+} from '../utils/hierarchyHelpers';
 import { useProgressionStore } from './useProgressionStore';
 import { useCallback } from 'react';
 
@@ -35,6 +48,22 @@ interface NotesState {
   getTotalLinks: () => number;
   getTotalBlocks: () => number;
   getUniqueTags: () => string[];
+
+  // 🆕 OPERAÇÕES DE HIERARQUIA
+  createChildNote: (
+    parentId: string,
+    childData: Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'parentId'>
+  ) => Note;
+  addChildToParent: (parentId: string, childId: string) => void;
+  removeChildFromParent: (childId: string) => void;
+  reorderChildren: (parentId: string, newOrder: string[]) => void;
+  promoteToChild: (parentId: string, targetNoteId: string) => void;
+  deleteNoteAndDescendants: (noteId: string) => void;
+
+  // 🆕 GETTERS HIERÁRQUICOS
+  getRootNotes: () => NoteViewModel[];
+  getChildrenOfNote: (parentId: string) => NoteViewModel[];
+  getAncestorsOfNote: (noteId: string) => NoteViewModel[];
 }
 
 export const useNotesStore = create<NotesState>()(
@@ -138,6 +167,71 @@ export const useNotesStore = create<NotesState>()(
 
       getUniqueTags: () => {
         return extractUniqueTags(get().notes);
+      },
+
+      // 🆕 OPERAÇÕES DE HIERARQUIA
+      createChildNote: (parentId, childData) => {
+        const { notes } = get();
+        const result = createChild(parentId, childData, notes);
+        set({ notes: result.notes });
+
+        // Registrar ação de progressão
+        useProgressionStore.getState().incrementNotes();
+
+        return result.newChild;
+      },
+
+      addChildToParent: (parentId, childId) => {
+        const { notes } = get();
+        const updated = addChild(parentId, childId, notes);
+        set({ notes: updated });
+      },
+
+      removeChildFromParent: (childId) => {
+        const { notes } = get();
+        const updated = removeChild(childId, notes);
+        set({ notes: updated });
+      },
+
+      reorderChildren: (parentId, newOrder) => {
+        const { notes } = get();
+        const updated = reorder(parentId, newOrder, notes);
+        set({ notes: updated });
+      },
+
+      promoteToChild: (parentId, targetNoteId) => {
+        const { notes } = get();
+        const updated = promote(parentId, targetNoteId, notes);
+        set({ notes: updated });
+      },
+
+      deleteNoteAndDescendants: (noteId) => {
+        const { notes } = get();
+        const updated = deleteWithDescendants(noteId, notes);
+        set({ notes: updated });
+      },
+
+      // 🆕 GETTERS HIERÁRQUICOS
+      getRootNotes: () => {
+        const { notes } = get();
+        const roots = notes.filter(n => isRoot(n));
+        return toNoteViewModels(roots);
+      },
+
+      getChildrenOfNote: (parentId) => {
+        const { notes } = get();
+        const parent = notes.find(n => n.id === parentId);
+        if (!parent) return [];
+        const children = getChildren(parent, notes);
+        return children.map(c => toNoteViewModel(c, notes));
+      },
+
+      getAncestorsOfNote: (noteId) => {
+        const { notes } = get();
+        const note = notes.find(n => n.id === noteId);
+        if (!note) return [];
+        const ancestors = getAncestors(note, notes);
+        return ancestors.map(a => toNoteViewModel(a, notes));
       },
     }),
     {

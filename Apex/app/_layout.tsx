@@ -12,6 +12,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { theme } from '@/src/theme';
 import { ProgressionSync } from '@/src/components/ProgressionSync';
+import { ErrorBoundary } from '@/src/components/ErrorBoundary';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -32,28 +33,30 @@ export default function RootLayout() {
   };
 
   return (
-    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-      <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
-        <ThemeProvider value={customDarkTheme}>
-          {/* Sincronizar progressão com dados reais */}
-          <ProgressionSync />
+    <ErrorBoundary>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <View style={{ flex: 1, backgroundColor: theme.colors.background.primary }}>
+          <ThemeProvider value={customDarkTheme}>
+            {/* Sincronizar progressão com dados reais */}
+            <ProgressionSync />
 
-          <Stack
-            screenOptions={{
-              contentStyle: { backgroundColor: theme.colors.background.primary },
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="note/[id]"
-              options={{
-                headerShown: false,
+            <Stack
+              screenOptions={{
+                contentStyle: { backgroundColor: theme.colors.background.primary },
               }}
-            />
-          </Stack>
-          <StatusBar style="light" backgroundColor={theme.colors.background.primary} />
-        </ThemeProvider>
-      </View>
-    </SafeAreaProvider>
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="note/[id]"
+                options={{
+                  headerShown: false,
+                }}
+              />
+            </Stack>
+            <StatusBar style="light" backgroundColor={theme.colors.background.primary} />
+          </ThemeProvider>
+        </View>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

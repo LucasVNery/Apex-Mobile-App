@@ -12,8 +12,11 @@ import { CalloutBlockComponent, CalloutBlockRef } from '../blocks/CalloutBlockCo
 import { DividerBlockComponent } from '../blocks/DividerBlockComponent';
 import { EditableChecklistBlock } from '../blocks/EditableChecklistBlock';
 import { ChecklistBlock as ChecklistBlockType } from '@/src/types/note.types';
+import LinksBlock from '../blocks/LinksBlock';
+import LinkBlock from '../blocks/LinkBlock';
 import { BlockMenu } from './BlockMenu';
 import { LinkSuggestionPopup } from './LinkSuggestionPopup';
+import SelectLinkTargetModal from '../modals/SelectLinkTargetModal';
 import { useProgressionStore } from '@/src/stores/useProgressionStore';
 import { useNotesStore, selectAddNote } from '@/src/stores/useNotesStore';
 import { useBlockSelection } from '@/src/hooks/useBlockSelection';
@@ -22,6 +25,7 @@ import { getTimestamp } from '@/src/utils/noteHelpers';
 
 interface BlockEditorProps {
   blocks: Block[];
+  noteId: string; // ID da nota atual (necessário para LinksBlock)
   onBlocksChange: (blocks: Block[]) => void;
   noteTitle: string;
   onTitleChange: (title: string) => void;
@@ -31,6 +35,7 @@ interface BlockEditorProps {
 
 export function BlockEditor({
   blocks,
+  noteId,
   onBlocksChange,
   noteTitle,
   onTitleChange,
@@ -42,6 +47,9 @@ export function BlockEditor({
   const [linkQuery, setLinkQuery] = useState('');
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>();
+  const [showLinkTargetModal, setShowLinkTargetModal] = useState(false);
+  const [editingLinkBlockId, setEditingLinkBlockId] = useState<string | null>(null);
+  const [newLinkBlockId, setNewLinkBlockId] = useState<string | null>(null);
 
   const { unlockedFeatures, incrementBlocks } = useProgressionStore();
   const addNote = useNotesStore(selectAddNote);
@@ -72,6 +80,8 @@ export function BlockEditor({
       items: type === 'checklist' || type === 'list' ? [] : undefined,
       ordered: type === 'list' ? false : undefined,
       level: type === 'heading' ? 1 : undefined,
+      noteRefs: type === 'links' ? [] : undefined,
+      targetNoteId: type === 'link' ? '' : undefined,
     } as Block;
 
     const newBlocks = insertAfter
@@ -92,6 +102,13 @@ export function BlockEditor({
     onBlocksChange(reorderedBlocks);
     incrementBlocks();
     setActiveBlockId(newBlock.id);
+
+    // Se for tipo 'link', marcar para abrir modal
+    if (type === 'link') {
+      setNewLinkBlockId(newBlock.id);
+    }
+
+    return newBlock.id;
   }, [blocks, onBlocksChange, incrementBlocks]);
 
   const updateBlock = useCallback((blockId: string, updates: Partial<Block>) => {
@@ -226,6 +243,16 @@ export function BlockEditor({
     }
   }, [activeBlockId, blocks.length]);
 
+  // Abrir modal automaticamente quando um novo link é criado
+  useEffect(() => {
+    if (newLinkBlockId) {
+      const timer = setTimeout(() => {
+        setShowLinkTargetModal(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [newLinkBlockId]);
+
   const handleSelectLink = (noteId: string, noteTitle: string) => {
     if (activeBlockId) {
       const activeBlock = blocks.find((b) => b.id === activeBlockId);
@@ -251,6 +278,40 @@ export function BlockEditor({
       color: theme.colors.accent.primary,
     });
     handleSelectLink(newNote.id, newNote.title);
+  };
+
+  // Handler para LinkBlock
+  const handleSelectLinkTarget = (noteId: string, noteTitle: string) => {
+    // Se estamos editando um link existente
+    if (editingLinkBlockId) {
+      updateBlock(editingLinkBlockId, {
+        targetNoteId: noteId,
+        displayText: noteTitle,
+      } as any);
+      setEditingLinkBlockId(null);
+    } else if (newLinkBlockId) {
+      // Se estamos criando um novo link
+      updateBlock(newLinkBlockId, {
+        targetNoteId: noteId,
+        displayText: noteTitle,
+      } as any);
+      setNewLinkBlockId(null);
+    } else {
+      // Fallback: pegar o último bloco adicionado
+      const lastBlock = blocks[blocks.length - 1];
+      if (lastBlock && lastBlock.type === 'link') {
+        updateBlock(lastBlock.id, {
+          targetNoteId: noteId,
+          displayText: noteTitle,
+        } as any);
+      }
+    }
+    setShowLinkTargetModal(false);
+  };
+
+  const handleEditLinkBlock = (blockId: string) => {
+    setEditingLinkBlockId(blockId);
+    setShowLinkTargetModal(true);
   };
 
   const renderBlock = (block: Block) => {
@@ -368,6 +429,30 @@ export function BlockEditor({
       case 'divider':
         return <DividerBlockComponent key={block.id} blockId={block.id} onDelete={() => removeBlock(block.id)} showDragHandle isSelected={isSelected} isSelectionMode={isSelectionMode} onPress={() => handleBlockPress(block.id)} onLongPress={() => handleBlockLongPress(block.id)} />;
 
+      case 'link':
+        return (
+          <LinkBlock
+            key={block.id}
+            block={block as any}
+            onUpdate={(updatedBlock) => updateBlock(block.id, updatedBlock as any)}
+            onDelete={() => removeBlock(block.id)}
+            isEditing={!isSelectionMode}
+            onEditPress={() => handleEditLinkBlock(block.id)}
+          />
+        );
+
+      case 'links':
+        return (
+          <LinksBlock
+            key={block.id}
+            block={block as any}
+            noteId={noteId}
+            onUpdate={(updatedBlock) => updateBlock(block.id, updatedBlock as any)}
+            onDelete={() => removeBlock(block.id)}
+            isEditing={!isSelectionMode}
+          />
+        );
+
       default:
         return null;
     }
@@ -434,6 +519,24 @@ export function BlockEditor({
           onCreateNew={handleCreateNewNote}
           onClose={() => setShowLinkSuggestion(false)}
           position={menuPosition}
+        />
+      )}
+
+      {showLinkTargetModal && (
+        <SelectLinkTargetModal
+          visible={showLinkTargetModal}
+          currentNoteId={noteId}
+          currentTargetId={
+            editingLinkBlockId
+              ? (blocks.find((b) => b.id === editingLinkBlockId) as any)?.targetNoteId
+              : undefined
+          }
+          onClose={() => {
+            setShowLinkTargetModal(false);
+            setEditingLinkBlockId(null);
+            setNewLinkBlockId(null);
+          }}
+          onSelectNote={handleSelectLinkTarget}
         />
       )}
     </KeyboardAvoidingView>

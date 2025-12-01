@@ -1,4 +1,12 @@
 import { Note, NoteViewModel, NoteLink, Block } from '@/src/types/note.types';
+import {
+  getParent,
+  getChildren,
+  getSiblings,
+  getAncestors,
+  getDescendants,
+  calculateHierarchyMetadata,
+} from './hierarchyHelpers';
 
 /**
  * Obtém timestamp atual (otimizado para chamadas em lote)
@@ -160,11 +168,26 @@ export function toNoteViewModel(note: Note, allNotes: Note[]): NoteViewModel {
     cleanViewModelCache();
   }
 
-  // Calcula ViewModel
+  // Calcula ViewModel com dados hierárquicos
+  const parent = getParent(note, allNotes);
+  const children = getChildren(note, allNotes);
+  const siblings = getSiblings(note, allNotes);
+  const ancestors = getAncestors(note, allNotes);
+  const descendants = getDescendants(note, allNotes);
+  const metadata = calculateHierarchyMetadata(note, allNotes);
+
   const viewModel: NoteViewModel = {
     ...note,
     backlinks: calculateBacklinks(note.id, allNotes),
     connections: calculateConnections(note.id, allNotes),
+
+    // 🆕 Dados hierárquicos
+    parent,
+    children,
+    siblings,
+    ancestors,
+    descendants,
+    metadata,
   };
 
   // Armazena no cache

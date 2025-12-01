@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotesStore } from '@/src/stores/useNotesStore';
@@ -11,16 +11,24 @@ import { theme } from '@/src/theme';
 import { Block } from '@/src/types/note.types';
 import * as Haptics from 'expo-haptics';
 import { ConfirmModal } from '@/src/components/ui/ConfirmModal';
+import HierarchyBreadcrumb from '@/src/components/hierarchy/HierarchyBreadcrumb';
+import HierarchyIndicator from '@/src/components/hierarchy/HierarchyIndicator';
+import ChildrenList from '@/src/components/hierarchy/ChildrenList';
+import CreateChildModal from '@/src/components/modals/CreateChildModal';
 
 export default function NoteDetailScreen() {
   const { id } = useLocalSearchParams();
-  const { updateNote } = useNotesStore();
+  const { updateNote, createChildNote, getNoteViewModelById } = useNotesStore();
   // Use seletor para reagir a mudanças na nota
   const note = useNotesStore((state) => state.notes.find(n => n.id === id));
   const notes = useNotesStore((state) => state.notes);
   const [selectedCount, setSelectedCount] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [createChildModalVisible, setCreateChildModalVisible] = useState(false);
   const deleteCallbackRef = useRef<(() => void) | null>(null);
+
+  // Obter ViewModel para dados hierárquicos
+  const viewModel = getNoteViewModelById(id as string);
 
   // Cleanup: limpa referência do deleteCallback quando o componente desmonta
   useEffect(() => {
@@ -79,6 +87,28 @@ export default function NoteDetailScreen() {
     setShowDeleteModal(false);
   };
 
+  // Handlers de hierarquia
+  const handleNavigateToNote = (noteId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/note/${noteId}`);
+  };
+
+  const handleCreateChild = (title: string, tags: string[]) => {
+    const newChild = createChildNote(id as string, {
+      title,
+      tags,
+      blocks: [],
+    });
+    setCreateChildModalVisible(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.push(`/note/${newChild.id}`);
+  };
+
+  const handleOpenCreateModal = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setCreateChildModalVisible(true);
+  };
+
   // Prepara lista de notas existentes para link suggestion
   const existingNotes = notes.map((n) => ({
     id: n.id,
@@ -127,15 +157,68 @@ export default function NoteDetailScreen() {
         )}
       </View>
 
+      {/* Breadcrumb de navegação */}
+      {viewModel && (
+        <HierarchyBreadcrumb
+          noteId={id as string}
+          onNavigate={handleNavigateToNote}
+        />
+      )}
+
+      {/* Indicador de hierarquia */}
+      {viewModel?.metadata && (
+        <HierarchyIndicator
+          depth={viewModel.metadata.depth}
+          childrenCount={viewModel.metadata.childrenCount}
+          isRoot={viewModel.metadata.isRoot}
+        />
+      )}
+
       {/* Editor */}
       <BlockEditor
         blocks={note.blocks}
+        noteId={note.id}
         onBlocksChange={handleBlocksChange}
         noteTitle={note.title}
         onTitleChange={handleTitleChange}
         existingNotes={existingNotes}
         onSelectionChange={handleSelectionChange}
       />
+
+      {/* Botão de adicionar sub-ambiente */}
+      {viewModel && viewModel.metadata && viewModel.metadata.depth < 9 && (
+        <View style={styles.addButtonContainer}>
+          <Pressable
+            onPress={handleOpenCreateModal}
+            style={({ pressed }) => [
+              styles.addButton,
+              pressed && styles.addButtonPressed,
+            ]}
+          >
+            <Ionicons name="add-circle" size={20} color="#FFFFFF" />
+            <Text style={styles.addButtonText}>Adicionar Sub-ambiente</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Lista de filhos (movido para baixo) */}
+      {viewModel && (
+        <ChildrenList
+          parentId={id as string}
+          onChildPress={handleNavigateToNote}
+        />
+      )}
+
+      {/* Create Child Modal */}
+      {viewModel && (
+        <CreateChildModal
+          visible={createChildModalVisible}
+          parentId={id as string}
+          parentTitle={note.title}
+          onClose={() => setCreateChildModalVisible(false)}
+          onCreateChild={handleCreateChild}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal
@@ -211,5 +294,29 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: theme.spacing.xs,
+  },
+  addButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border.light,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: '#27AE60',
+    borderRadius: 10,
+  },
+  addButtonPressed: {
+    opacity: 0.7,
+  },
+  addButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

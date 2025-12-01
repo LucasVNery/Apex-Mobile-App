@@ -68,7 +68,14 @@ const BLOCK_MENU_ITEMS: BlockMenuItem[] = [
     type: 'link',
     icon: 'link-outline',
     label: 'Link',
-    description: 'Link para nota',
+    description: 'Link para ambiente',
+    category: 'basic',
+  },
+  {
+    type: 'links',
+    icon: 'git-network-outline',
+    label: 'Referências',
+    description: 'Lista de links',
     category: 'advanced',
   },
   {
@@ -239,6 +246,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 10,
+    zIndex: 1000, // Garantir que fique por cima de tudo
     maxHeight: 710,
   },
   scrollView: {
