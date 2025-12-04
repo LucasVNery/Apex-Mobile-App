@@ -26,8 +26,20 @@ export default function SettingsScreen() {
           text: 'Sair',
           style: 'destructive',
           onPress: async () => {
-            await signOut();
-            router.replace('/sign-in');
+            try {
+              // 🛡️ BUG 5 FIX: Adicionar tratamento de erro no logout
+              await signOut();
+              // Só redirecionar se o logout foi bem-sucedido
+              router.replace('/sign-in');
+            } catch (error) {
+              // Se o logout falhar, mostrar erro e não redirecionar
+              console.error('❌ Erro ao fazer logout:', error);
+              Alert.alert(
+                'Erro',
+                'Não foi possível fazer logout. Por favor, tente novamente.',
+                [{ text: 'OK' }]
+              );
+            }
           },
         },
       ]
