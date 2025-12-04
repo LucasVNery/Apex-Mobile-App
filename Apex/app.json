@@ -30,7 +30,21 @@
         "translucent": true,
         "backgroundColor": "#121212",
         "barStyle": "light-content"
-      }
+      },
+      "package": "com.apex.app",
+      "permissions": [],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "apex"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "output": "static",

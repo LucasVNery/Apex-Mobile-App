@@ -1,7 +1,8 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform, View, StyleSheet } from 'react-native';
+import { Tabs, useRouter, useSegments } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Platform, View, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '@clerk/clerk-expo';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,36 @@ function TabBarBackground() {
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const segments = useSegments();
+  const router = useRouter();
+  const { isSignedIn, isLoaded } = useAuth();
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const inAuthGroup = segments[0] === '(tabs)';
+    const isNoteRoute = segments[0] === 'note';
+    const isSignInRoute = segments[0] === 'sign-in';
+
+    // Se não está autenticado e está tentando acessar rotas protegidas
+    if (!isSignedIn && (inAuthGroup || isNoteRoute)) {
+      router.replace('/sign-in');
+    } 
+    // Se está autenticado e está na tela de login, redirecionar para home
+    else if (isSignedIn && isSignInRoute) {
+      router.replace('/(tabs)');
+    }
+    // Não redirecionar se estiver acessando rotas válidas como /note/[id]
+    // Permitir navegação para rotas de notas quando autenticado
+  }, [isSignedIn, isLoaded, segments]);
+
+  if (!isLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background.primary }}>
+        <ActivityIndicator size="large" color={theme.colors.accent.primary} />
+      </View>
+    );
+  }
 
   return (
     <Tabs
@@ -125,4 +156,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-

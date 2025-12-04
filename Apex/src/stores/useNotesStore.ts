@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
 import { Note, NoteViewModel } from '../types/note.types';
-import { mockNotes } from '../utils/mockData';
+// Removido import de mockNotes - não é mais necessário
 import {
   toNoteViewModel,
   toNoteViewModels,
@@ -69,7 +69,7 @@ interface NotesState {
 export const useNotesStore = create<NotesState>()(
   persist(
     (set, get) => ({
-      notes: mockNotes,
+      notes: [], // Iniciar vazio - dados serão carregados do AsyncStorage
 
       // Busca com ViewModels (inclui campos calculados)
       getFilteredNotes: (query: string) => {
@@ -242,6 +242,14 @@ export const useNotesStore = create<NotesState>()(
         notes: state.notes,
         // searchQuery removido - não deve persistir
       }),
+      // Garantir que os dados sejam carregados antes de usar
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          console.log('✅ Notas carregadas do AsyncStorage:', state.notes.length);
+        } else {
+          console.log('⚠️ Nenhuma nota encontrada no AsyncStorage');
+        }
+      },
     }
   )
 );
