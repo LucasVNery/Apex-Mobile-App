@@ -1,50 +1,117 @@
-# Welcome to your Expo app 👋
+# Apex - Sistema de Notas Inteligente
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Sistema completo de notas com hierarquia, links bidirecionais, grafo de conhecimento e progressão gamificada.
 
-## Get started
+## 🚀 Quick Start
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+### 1. Backend (Terminal 1)
 ```bash
-npm run reset-project
+cd server
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run dev
+```
+Servidor: http://localhost:3000
+
+### 2. Configure o App
+Descubra seu IP: `ipconfig` (Windows) ou `ifconfig` (Mac/Linux)
+
+Edite `.env`:
+```env
+EXPO_PUBLIC_API_URL=http://SEU-IP:3000/api
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_c3d1ZXQtc2hpbmVyLTAuY2xlcmsuYWNjb3VudHMuZGV2JA
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 3. App Mobile (Terminal 2)
+```bash
+npm install
+npm start
+```
 
-## Learn more
+## 📱 Usando as APIs
 
-To learn more about developing your project with Expo, look at the following resources:
+### Criar Nota
+```typescript
+import { useNotes } from '@/src/hooks/useApi';
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+const { create } = useNotes();
+await create.execute({ title: 'Minha Nota', tags: ['teste'] });
+```
 
-## Join the community
+### Listar Notas
+```typescript
+const { getAll } = useNotes();
+await getAll.execute({ limit: 20 });
+```
 
-Join our community of developers creating universal apps.
+### Modo Offline-First
+```typescript
+import { useNotesStore } from '@/src/stores/useNotesStore';
+import { api } from '@/src/api';
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+const note = useNotesStore.getState().addNote(data);
+api.notes.create(data).catch(console.error);
+```
+
+## 🏗️ Estrutura
+
+```
+Apex/
+├── src/
+│   ├── api/          # APIs REST (Notes, Blocks, Graph, etc)
+│   ├── hooks/        # useApi hooks
+│   ├── stores/       # Zustand stores
+│   └── types/        # TypeScript types
+│
+└── server/
+    ├── src/
+    │   ├── controllers/  # Lógica de negócio
+    │   ├── routes/       # Endpoints REST
+    │   └── middleware/   # Auth
+    └── prisma/
+        └── schema.prisma # 10 tabelas
+```
+
+## 📚 Documentação
+
+- **Quick Start**: `QUICK_START.md`
+- **API Frontend**: `src/api/README.md`
+- **Backend**: `server/README.md`
+
+## 🎯 Features
+
+✅ CRUD de Notas e Blocos
+✅ Hierarquia (Parent-Child)
+✅ Links Bidirecionais [[nota]]
+✅ Grafo de Conhecimento
+✅ Sistema de Progressão
+✅ Busca Full-Text
+✅ Offline-First
+✅ Multi-Tenancy (Clerk)
+
+## 🔧 Stack
+
+**Frontend**: React Native + Expo + Zustand + Axios
+**Backend**: Node.js + Express + Prisma + PostgreSQL
+**Auth**: Clerk
+
+## ⚡ Endpoints Principais
+
+```
+GET    /api/notes              # Lista notas
+POST   /api/notes              # Cria nota
+GET    /api/blocks/note/:id    # Lista blocos
+GET    /api/progression        # Progressão do usuário
+GET    /api/graph              # Grafo completo
+```
+
+## 🐛 Troubleshooting
+
+**"Network request failed"**: Use IP da máquina, não localhost
+**"Cannot connect to database"**: Configure DATABASE_URL em `server/.env`
+**"401 Unauthorized"**: Configure CLERK_SECRET_KEY (opcional)
+
+## 📝 License
+
+MIT

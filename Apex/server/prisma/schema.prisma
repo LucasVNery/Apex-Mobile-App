@@ -1,0 +1,263 @@
+// This is your Prisma schema file
+// Based on DATABASE_SCHEMA_REPORT.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// NOTES - Notas principais do sistema
+// ============================================================================
+model Note {
+  id        String   @id @default(uuid())
+  title     String
+  tags      String[] @default([])
+  createdAt BigInt
+  updatedAt BigInt
+  color     String?
+
+  // Hierarquia
+  parentId      String?
+  parent        Note?   @relation("NoteHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children      Note[]  @relation("NoteHierarchy")
+  depth         Int     @default(0)
+  path          String[] @default([])
+  childrenIds   String[] @default([])
+  isRoot        Boolean @default(false)
+  hierarchyOrder Int    @default(0)
+
+  // Relações
+  blocks              Block[]
+  notesAsSource       NoteLink[]         @relation("SourceNote")
+  notesAsTarget       NoteLink[]         @relation("TargetNote")
+  hierarchyAsParent   HierarchyRelation[] @relation("ParentNote")
+  hierarchyAsChild    HierarchyRelation[] @relation("ChildNote")
+  connectionsFrom     NoteConnection[]    @relation("FromNote")
+  connectionsTo       NoteConnection[]    @relation("ToNote")
+  graphNode           GraphNode?
+
+  // User (para multi-tenancy com Clerk)
+  userId    String
+
+  @@index([userId])
+  @@index([parentId])
+  @@index([createdAt])
+  @@index([title])
+  @@map("notes")
+}
+
+// ============================================================================
+// BLOCKS - Blocos de conteúdo dentro das notas
+// ============================================================================
+model Block {
+  id        String   @id @default(uuid())
+  noteId    String
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  type      String   // text, checklist, heading, list, divider, callout, link, embed, table, links
+  content   Json?    // Conteúdo dinâmico baseado no tipo
+  order     Int
+  parentId  String?
+  metadata  Json?
+  selected  Boolean  @default(false)
+
+  createdAt BigInt
+  updatedAt BigInt
+
+  // Relações
+  links     NoteLink[]
+
+  @@index([noteId])
+  @@index([type])
+  @@map("blocks")
+}
+
+// ============================================================================
+// NOTE_LINKS - Links entre notas extraídos dos blocos
+// ============================================================================
+model NoteLink {
+  id            String   @id @default(uuid())
+  blockId       String
+  block         Block    @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  sourceNoteId  String
+  sourceNote    Note     @relation("SourceNote", fields: [sourceNoteId], references: [id], onDelete: Cascade)
+
+  targetNoteId  String?
+  targetNote    Note?    @relation("TargetNote", fields: [targetNoteId], references: [id], onDelete: SetNull)
+
+  text          String
+  type          String   // direct | reference
+  positionStart Int
+  positionEnd   Int
+
+  createdAt     BigInt
+
+  @@index([blockId])
+  @@index([sourceNoteId])
+  @@index([targetNoteId])
+  @@map("note_links")
+}
+
+// ============================================================================
+// HIERARCHY_RELATIONS - Relações hierárquicas parent-child
+// ============================================================================
+model HierarchyRelation {
+  id        String   @id @default(uuid())
+
+  parentId  String
+  parent    Note     @relation("ParentNote", fields: [parentId], references: [id], onDelete: Cascade)
+
+  childId   String
+  child     Note     @relation("ChildNote", fields: [childId], references: [id], onDelete: Cascade)
+
+  order     Int      @default(0)
+  type      String   // explicit | implicit
+  createdAt BigInt
+
+  @@unique([parentId, childId])
+  @@index([parentId])
+  @@index([childId])
+  @@map("hierarchy_relations")
+}
+
+// ============================================================================
+// NOTE_CONNECTIONS - Conexões calculadas entre notas
+// ============================================================================
+model NoteConnection {
+  id          String   @id @default(uuid())
+
+  fromNoteId  String
+  fromNote    Note     @relation("FromNote", fields: [fromNoteId], references: [id], onDelete: Cascade)
+
+  toNoteId    String
+  toNote      Note     @relation("ToNote", fields: [toNoteId], references: [id], onDelete: Cascade)
+
+  linkType    String   // direct | reference | tag | hierarchy
+  weight      Int      @default(1)
+  createdAt   BigInt
+
+  @@unique([fromNoteId, toNoteId, linkType])
+  @@index([fromNoteId])
+  @@index([toNoteId])
+  @@map("note_connections")
+}
+
+// ============================================================================
+// PROGRESSION_STATE - Estado de progressão do usuário
+// ============================================================================
+model ProgressionState {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+
+  level               Int      @default(1)
+  notesCreated        Int      @default(0)
+  linksCreated        Int      @default(0)
+  blocksUsed          Int      @default(0)
+  tagsUsed            Int      @default(0)
+  graphInteractions   Int      @default(0)
+  unlockedFeatures    String[] @default([])
+
+  createdAt           BigInt
+  updatedAt           BigInt
+
+  // Relações
+  achievements        Achievement[]
+
+  @@index([userId])
+  @@map("progression_state")
+}
+
+// ============================================================================
+// ACHIEVEMENTS - Conquistas desbloqueadas
+// ============================================================================
+model Achievement {
+  id          String   @id @default(uuid())
+
+  progressionId String
+  progression   ProgressionState @relation(fields: [progressionId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String
+  icon        String
+  category    String?
+  unlockedAt  BigInt
+
+  @@index([progressionId])
+  @@map("achievements")
+}
+
+// ============================================================================
+// GRAPH_NODES - Nós do grafo de visualização
+// ============================================================================
+model GraphNode {
+  id              String   @id @default(uuid())
+  noteId          String   @unique
+  note            Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  title           String
+  connections     Int      @default(0)
+  tags            String[] @default([])
+  x               Float?
+  y               Float?
+
+  // Hierarquia
+  type            String?  // root | parent | child | orphan
+  depth           Int?
+  isRoot          Boolean  @default(false)
+  childrenCount   Int      @default(0)
+  color           String?
+  size            Float?
+
+  createdAt       BigInt
+  updatedAt       BigInt
+
+  @@index([noteId])
+  @@map("graph_nodes")
+}
+
+// ============================================================================
+// GRAPH_EDGES - Arestas do grafo
+// ============================================================================
+model GraphEdge {
+  id        String   @id @default(uuid())
+
+  source    String
+  target    String
+  weight    Int      @default(1)
+  type      String   // direct | reference | tag | hierarchy | link
+
+  color     String?
+  width     Float?
+  style     String?  // solid | dashed
+
+  createdAt BigInt
+
+  @@unique([source, target, type])
+  @@index([source])
+  @@index([target])
+  @@map("graph_edges")
+}
+
+// ============================================================================
+// GRAPH_CACHE - Cache do grafo completo
+// ============================================================================
+model GraphCache {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+
+  notesHash  String
+  graphData  Json
+  stats      Json
+
+  createdAt  BigInt
+  updatedAt  BigInt
+
+  @@index([userId])
+  @@map("graph_cache")
+}

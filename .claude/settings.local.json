@@ -9,7 +9,11 @@
       "Bash(findstr:*)",
       "Bash(find:*)",
       "Bash(npx ts-node:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(npx expo start:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm cache clean:*)"
     ],
     "deny": [],
     "ask": []
