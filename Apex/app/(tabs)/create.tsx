@@ -99,7 +99,7 @@ export default function CreateScreen() {
           style={styles.createButton}
         >
           <View style={styles.buttonContent}>
-            <Ionicons name="add-circle" size={24} color="#FFFFFF" />
+            <Ionicons name="add-circle" size={24} color={theme.colors.text.onAccent} />
             <Text weight="bold" style={styles.buttonText}>
               Criar Novo Ambiente
             </Text>
@@ -185,38 +185,58 @@ export default function CreateScreen() {
         </View>
       </SlideIn>
 
-      {/* Clear All Button */}
+      {/* Danger Zone - Reestilizada */}
       <SlideIn delay={200} direction="up">
         <View style={styles.dangerZone}>
-          <Text variant="title" weight="semibold" style={styles.dangerTitle}>
-            Zona de Perigo
-          </Text>
+          <View style={styles.dangerHeader}>
+            <Ionicons name="warning" size={20} color={theme.colors.accent.error} />
+            <Text variant="title" weight="bold" style={styles.dangerTitle}>
+              Zona de Perigo
+            </Text>
+          </View>
+
           <Card style={styles.dangerCard}>
-            <View style={styles.dangerContent}>
-              <View style={styles.dangerIconContainer}>
-                <Ionicons name="trash-outline" size={24} color={theme.colors.accent.error} />
+            <View style={styles.dangerCardInner}>
+              {/* Warning Banner */}
+              <View style={styles.warningBanner}>
+                <Ionicons name="alert-circle" size={18} color={theme.colors.accent.error} />
+                <Text variant="caption" style={styles.warningText}>
+                  Ações irreversíveis
+                </Text>
               </View>
-              <View style={styles.dangerTextContainer}>
-                <Text variant="body" weight="semibold">
-                  Apagar Todos os Ambientes
-                </Text>
-                <Text variant="caption" color="secondary">
-                  Remove permanentemente todos os {notes.length} ambientes salvos
-                </Text>
+
+              {/* Content */}
+              <View style={styles.dangerContent}>
+                <View style={styles.dangerInfo}>
+                  <View style={styles.dangerIconContainer}>
+                    <Ionicons name="trash-bin" size={28} color={theme.colors.accent.error} />
+                  </View>
+                  <View style={styles.dangerTextContainer}>
+                    <Text variant="body" weight="bold" style={styles.dangerActionTitle}>
+                      Apagar Todos os Ambientes
+                    </Text>
+                    <Text variant="caption" style={styles.dangerDescription}>
+                      Remove <Text weight="bold">{notes.length} ambiente(s)</Text> permanentemente.
+                      Esta ação não pode ser desfeita.
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Delete Button */}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.deleteButton,
+                    pressed && styles.deleteButtonPressed,
+                  ]}
+                  onPress={handleClearAllEnvironments}
+                >
+                  <Ionicons name="trash" size={20} color={theme.colors.text.onAccent} />
+                  <Text weight="bold" style={styles.deleteButtonText}>
+                    Apagar Tudo
+                  </Text>
+                </Pressable>
               </View>
             </View>
-            <Button
-              variant="secondary"
-              onPress={handleClearAllEnvironments}
-              style={styles.deleteButton}
-            >
-              <View style={styles.buttonContent}>
-                <Ionicons name="trash" size={20} color={theme.colors.accent.error} />
-                <Text weight="semibold" style={styles.deleteButtonText}>
-                  Apagar Tudo
-                </Text>
-              </View>
-            </Button>
           </Card>
         </View>
       </SlideIn>
@@ -251,7 +271,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: theme.colors.text.onAccent,
     fontSize: theme.typography.sizes.lg,
   },
   statsCard: {
@@ -302,41 +322,100 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dangerZone: {
-    marginTop: theme.spacing.xl,
-    gap: theme.spacing.sm,
+    marginTop: theme.spacing.xl * 1.5,
+    marginBottom: theme.spacing.lg,
+  },
+  dangerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xs,
   },
   dangerTitle: {
-    marginBottom: theme.spacing.sm,
     color: theme.colors.accent.error,
   },
   dangerCard: {
-    borderWidth: 1,
-    borderColor: theme.colors.accent.error + '40',
-    backgroundColor: theme.colors.accent.error + '08',
+    borderWidth: 2,
+    borderColor: theme.colors.accent.error + '50',
+    backgroundColor: theme.colors.accent.error + '05',
+    overflow: 'hidden',
   },
-  dangerContent: {
+  dangerCardInner: {
+    padding: 0,
+  },
+  warningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: theme.colors.accent.error + '15',
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.accent.error + '30',
+  },
+  warningText: {
+    color: theme.colors.accent.error,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    fontSize: theme.typography.sizes.xs,
+    letterSpacing: 0.5,
+  },
+  dangerContent: {
+    padding: theme.spacing.lg,
+    gap: theme.spacing.lg,
+  },
+  dangerInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: theme.spacing.md,
-    marginBottom: theme.spacing.md,
   },
   dangerIconContainer: {
-    width: 48,
-    height: 48,
+    width: 56,
+    height: 56,
     borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.accent.error + '20',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.accent.error + '30',
   },
   dangerTextContainer: {
     flex: 1,
+    gap: theme.spacing.xs,
+  },
+  dangerActionTitle: {
+    color: theme.colors.text.primary,
+    fontSize: theme.typography.sizes.base,
+  },
+  dangerDescription: {
+    color: theme.colors.text.secondary,
+    lineHeight: 20,
   },
   deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.accent.error,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 2,
     borderColor: theme.colors.accent.error,
-    borderWidth: 1,
+    shadowColor: theme.colors.accent.error,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  deleteButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
   },
   deleteButtonText: {
-    color: theme.colors.accent.error,
+    color: theme.colors.text.onAccent,
+    fontSize: theme.typography.sizes.base,
   },
 });
 

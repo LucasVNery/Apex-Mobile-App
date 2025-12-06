@@ -244,11 +244,7 @@ export const useNotesStore = create<NotesState>()(
       }),
       // Garantir que os dados sejam carregados antes de usar
       onRehydrateStorage: () => (state) => {
-        if (state) {
-          console.log('✅ Notas carregadas do AsyncStorage:', state.notes.length);
-        } else {
-          console.log('⚠️ Nenhuma nota encontrada no AsyncStorage');
-        }
+        // Dados recarregados do AsyncStorage
       },
     }
   )

@@ -39,7 +39,7 @@ export default function HomeScreen() {
                 style={styles.emptyButton}
               >
                 <View style={styles.buttonContent}>
-                  <Ionicons name="add-circle" size={20} color="#FFFFFF" />
+                  <Ionicons name="add-circle" size={20} color={theme.colors.text.onAccent} />
                   <Text weight="semibold" style={styles.buttonText}>
                     Criar Primeiro Item
                   </Text>
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: theme.colors.text.onAccent,
     fontSize: theme.typography.sizes.base,
   },
 });

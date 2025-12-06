@@ -82,7 +82,6 @@ export function BlocksScreen({ withTabBar = false }: BlocksScreenProps) {
     trigger('light');
     setShowBlockMenu(false);
     // TODO: Implementar adição de bloco
-    console.log('Adicionar bloco:', blockType);
   };
 
   return (

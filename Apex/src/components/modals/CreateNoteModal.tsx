@@ -177,6 +177,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   createButtonText: {
-    color: '#FFFFFF',
+    color: theme.colors.text.onAccent,
   },
 });

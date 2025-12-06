@@ -35,9 +35,6 @@ export class ErrorBoundary extends Component<Props, State> {
       error,
       errorInfo,
     });
-
-    // TODO: Log para serviço de erro (Sentry, Bugsnag, etc)
-    // logErrorToService(error, errorInfo);
   }
 
   handleReset = () => {

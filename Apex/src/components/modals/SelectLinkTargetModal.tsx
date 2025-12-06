@@ -36,19 +36,11 @@ export default function SelectLinkTargetModal({
   const { notes } = useNotesStore();
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Debug
-  console.log('SelectLinkTargetModal - Total notes:', notes.length);
-  console.log('SelectLinkTargetModal - currentNoteId:', currentNoteId);
-  console.log('SelectLinkTargetModal - searchQuery:', searchQuery);
-
   // Filtrar e ordenar notas disponíveis
   const availableNotes = useMemo(() => {
-    console.log('useMemo recalculating - searchQuery:', searchQuery);
-
     const filtered = notes.filter((note) => {
       // Excluir nota atual
       if (note.id === currentNoteId) {
-        console.log('Excluding current note:', note.title);
         return false;
       }
 
@@ -60,7 +52,6 @@ export default function SelectLinkTargetModal({
         const matchTags = note.tags?.some((tag) =>
           tag.toLowerCase().includes(query)
         );
-        console.log(`Note "${note.title}": matchTitle=${matchTitle}, matchTags=${matchTags}`);
         return matchTitle || matchTags;
       }
 
@@ -90,9 +81,6 @@ export default function SelectLinkTargetModal({
         a.title.toLowerCase().localeCompare(b.title.toLowerCase())
       );
     }
-
-    console.log('SelectLinkTargetModal - availableNotes count:', sorted.length);
-    console.log('SelectLinkTargetModal - availableNotes titles:', sorted.map(n => n.title));
 
     return sorted;
   }, [notes, currentNoteId, searchQuery]);
@@ -173,23 +161,12 @@ export default function SelectLinkTargetModal({
             )}
           </View>
 
-          {/* Debug Info */}
-          <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
-            <Text style={{ fontSize: 12, color: '#000' }}>
-              Debug: Total notes: {notes.length}
-            </Text>
-            <Text style={{ fontSize: 12, color: '#000' }}>
-              Available: {availableNotes.length}
-            </Text>
-            <Text style={{ fontSize: 12, color: '#000' }}>
-              Search: "{searchQuery}"
-            </Text>
-          </View>
-
           {/* Notes List */}
           <ScrollView
             style={styles.scrollView}
+            contentContainerStyle={styles.scrollViewContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
             {availableNotes.length > 0 ? (
               availableNotes.map((note) => (
@@ -313,6 +290,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: theme.borderRadius.xl,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     maxHeight: '85%',
+    display: 'flex',
+    flexDirection: 'column',
   },
   header: {
     flexDirection: 'row',
@@ -363,6 +342,10 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     paddingHorizontal: theme.spacing.lg,
+    minHeight: 200,
+  },
+  scrollViewContent: {
+    paddingBottom: 300, // Espaço extra para não ficar atrás do teclado
   },
   noteItem: {
     flexDirection: 'row',

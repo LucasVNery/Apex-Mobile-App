@@ -56,12 +56,12 @@ export const Button: React.FC<ButtonProps> = ({
     switch (variant) {
       case 'primary':
       case 'secondary':
-        return '#FFFFFF';
+        return theme.colors.text.onAccent;
       case 'outline':
       case 'ghost':
         return theme.colors.accent.primary;
       default:
-        return '#FFFFFF';
+        return theme.colors.text.onAccent;
     }
   };
 

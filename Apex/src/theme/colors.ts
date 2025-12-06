@@ -8,6 +8,7 @@ export const colors = {
     primary: '#E0E0E0',      // Texto Principal Claro
     secondary: '#A0A0A0',    // Texto Secundário/Fosco
     tertiary: '#6B6B6B',     // Texto terciário (ainda mais fosco)
+    onAccent: '#121212',     // Texto sobre cores de destaque (substitui branco)
   },
   accent: {
     primary: '#4CAF50',      // Destaque/Acento Principal (Verde)
@@ -19,5 +20,8 @@ export const colors = {
   border: {
     light: '#2A2A2A',        // Bordas sutis no tema escuro
     medium: '#3A3A3A',       // Bordas mais visíveis
+  },
+  icon: {
+    onAccent: '#121212',     // Ícones sobre cores de destaque
   },
 };
