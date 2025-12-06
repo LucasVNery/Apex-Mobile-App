@@ -1,50 +1,13 @@
 import React from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { useAuth } from '@clerk/clerk-expo';
-import { router } from 'expo-router';
+import { View, StyleSheet } from 'react-native';
 import { Text } from '@/src/components/ui/Text';
 import { Card } from '@/src/components/ui/Card';
-import { Button } from '@/src/components/ui/Button';
 import { FadeIn } from '@/src/components/animations/FadeIn';
 import { ScreenContainer } from '@/src/components/layout';
 import { theme } from '@/src/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
-  const { signOut, user } = useAuth();
-
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sair',
-      'Tem certeza que deseja sair?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // 🛡️ BUG 5 FIX: Adicionar tratamento de erro no logout
-              await signOut();
-              // Só redirecionar se o logout foi bem-sucedido
-              router.replace('/sign-in');
-            } catch (error) {
-              // Se o logout falhar, mostrar erro e não redirecionar
-              console.error('❌ Erro ao fazer logout:', error);
-              Alert.alert(
-                'Erro',
-                'Não foi possível fazer logout. Por favor, tente novamente.',
-                [{ text: 'OK' }]
-              );
-            }
-          },
-        },
-      ]
-    );
-  };
 
   return (
     <ScreenContainer withTabBar>
@@ -53,11 +16,6 @@ export default function SettingsScreen() {
             <Text variant="heading" weight="bold">
               Configurações
             </Text>
-            {user && (
-              <Text variant="caption" color="secondary" style={styles.userEmail}>
-                {user.primaryEmailAddress?.emailAddress}
-              </Text>
-            )}
           </View>
         </FadeIn>
 
@@ -124,26 +82,6 @@ export default function SettingsScreen() {
           </View>
         </FadeIn>
 
-        <FadeIn delay={250}>
-          <View style={styles.section}>
-            <Text variant="title" weight="semibold" style={styles.sectionTitle}>
-              Conta
-            </Text>
-            <Button
-              variant="outline"
-              size="large"
-              onPress={handleSignOut}
-              style={styles.signOutButton}
-            >
-              <View style={styles.signOutContent}>
-                <Ionicons name="log-out-outline" size={20} color={theme.colors.accent.warning} />
-                <Text weight="semibold" style={styles.signOutText}>
-                  Sair da Conta
-                </Text>
-              </View>
-            </Button>
-          </View>
-        </FadeIn>
     </ScreenContainer>
   );
 }
@@ -151,9 +89,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   header: {
     marginBottom: theme.spacing.lg,
-  },
-  userEmail: {
-    marginTop: theme.spacing.xs,
   },
   section: {
     marginBottom: theme.spacing.xl,
@@ -185,16 +120,5 @@ const styles = StyleSheet.create({
   description: {
     marginTop: theme.spacing.sm,
     lineHeight: 18,
-  },
-  signOutButton: {
-    marginTop: theme.spacing.sm,
-  },
-  signOutContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  signOutText: {
-    color: theme.colors.accent.warning,
   },
 });
