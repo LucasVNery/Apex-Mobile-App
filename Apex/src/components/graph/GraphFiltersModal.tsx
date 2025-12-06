@@ -10,7 +10,6 @@ export interface GraphFilters {
   maxDepth: number;
   selectedTags: string[];
   nodeTypes: Array<'root' | 'parent' | 'child' | 'orphan'>;
-  searchQuery: string;
 }
 
 interface GraphFiltersModalProps {
@@ -46,7 +45,6 @@ export default function GraphFiltersModal({
       maxDepth: 9,
       selectedTags: [],
       nodeTypes: ['root', 'parent', 'child', 'orphan'],
-      searchQuery: '',
     });
   };
 

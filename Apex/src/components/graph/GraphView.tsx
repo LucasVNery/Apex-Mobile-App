@@ -15,12 +15,9 @@ import { graphLayoutCache } from '@/src/utils/graphCache';
 import GraphNode from './GraphNode';
 import GraphEdge from './GraphEdge';
 import GraphControls from './GraphControls';
-import GraphFiltersModal, { GraphFilters } from './GraphFiltersModal';
-import GraphSearchBar from './GraphSearchBar';
 import GraphLevelLabel from './GraphLevelLabel';
 import GraphLevelDivider from './GraphLevelDivider';
 import { Graph } from '@/src/types/graph.types';
-import { filterGraphByDepth, filterGraphByNodeType, filterGraphByNoteIds } from '@/src/utils/graphHelpers';
 import { router } from 'expo-router';
 import { haptic } from '@/src/utils/haptics';
 import { logger } from '@/src/utils/logger';
@@ -36,13 +33,6 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function GraphView() {
   const { notes } = useNotesStore();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [filtersModalVisible, setFiltersModalVisible] = useState(false);
-  const [filters, setFilters] = useState<GraphFilters>({
-    maxDepth: 9,
-    selectedTags: [],
-    nodeTypes: ['root', 'parent', 'child', 'orphan'],
-    searchQuery: '',
-  });
 
   // Valores compartilhados para pan e zoom
   const translateX = useSharedValue(0);
@@ -73,55 +63,8 @@ export default function GraphView() {
     return layouted;
   }, [notes]);
 
-  // Extrair tags disponíveis
-  const availableTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    notes.forEach((note) => note.tags.forEach((tag) => tagSet.add(tag)));
-    return Array.from(tagSet).sort();
-  }, [notes]);
-
-  // Aplicar filtros no grafo
-  const filteredGraph = useMemo(() => {
-    let filtered = { ...graph };
-
-    // Filtro de profundidade
-    if (filters.maxDepth < 9) {
-      filtered = filterGraphByDepth(filtered, filters.maxDepth);
-    }
-
-    // Filtro de tipo
-    if (filters.nodeTypes.length < 4) {
-      filtered = filterGraphByNodeType(filtered, filters.nodeTypes);
-    }
-
-    // Filtro de tags
-    if (filters.selectedTags.length > 0) {
-      const nodeIds = notes
-        .filter((note) =>
-          note.tags.some((tag) => filters.selectedTags.includes(tag))
-        )
-        .map((note) => note.id);
-      filtered = filterGraphByNoteIds(filtered, nodeIds);
-    }
-
-    // Filtro de busca
-    if (filters.searchQuery.length > 0) {
-      const query = filters.searchQuery.toLowerCase();
-      const matchingNodes = filtered.nodes.filter((node) =>
-        node.title.toLowerCase().includes(query)
-      );
-      filtered = filterGraphByNoteIds(
-        filtered,
-        matchingNodes.map((n) => n.id)
-      );
-    }
-
-    logger.debug(`🔍 Filtros aplicados: ${filtered.nodes.length}/${graph.nodes.length} nós`);
-    return filtered;
-  }, [graph, filters, notes]);
-
-  // Usar grafo filtrado ao invés do grafo original
-  const displayGraph = filteredGraph;
+  // Usar grafo completo
+  const displayGraph = graph;
 
   // 🆕 ETAPA 7: Calcular níveis e suas posições
   const levels = useMemo(() => {
@@ -285,35 +228,8 @@ export default function GraphView() {
     setSelectedNodeId(null);
   }, [initialTranslateX, initialTranslateY]);
 
-  const handleFilterToggle = useCallback(() => {
-    haptic.light();
-    setFiltersModalVisible(true);
-  }, []);
-
-  const handleApplyFilters = useCallback((newFilters: GraphFilters) => {
-    setFilters(newFilters);
-  }, []);
-
-  const handleSearch = useCallback((query: string) => {
-    setFilters((prev) => ({ ...prev, searchQuery: query }));
-  }, []);
-
-  const isFilterActive = useMemo(() => {
-    return (
-      filters.maxDepth < 9 ||
-      filters.selectedTags.length > 0 ||
-      filters.nodeTypes.length < 4 ||
-      filters.searchQuery.length > 0
-    );
-  }, [filters]);
-
   return (
     <GestureHandlerRootView style={styles.container}>
-      {/* Barra de busca */}
-      <View style={styles.searchContainer}>
-        <GraphSearchBar onSearch={handleSearch} />
-      </View>
-
       <GestureDetector gesture={composed}>
         <Animated.View style={[styles.svgContainer, animatedStyle]}>
           <Svg
@@ -373,22 +289,11 @@ export default function GraphView() {
         </Animated.View>
       </GestureDetector>
 
-      {/* Controles de zoom e filtro */}
+      {/* Controles de zoom */}
       <GraphControls
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onReset={handleReset}
-        onFilterToggle={handleFilterToggle}
-        isFilterActive={isFilterActive}
-      />
-
-      {/* Modal de filtros */}
-      <GraphFiltersModal
-        visible={filtersModalVisible}
-        onClose={() => setFiltersModalVisible(false)}
-        onApply={handleApplyFilters}
-        currentFilters={filters}
-        availableTags={availableTags}
       />
     </GestureHandlerRootView>
   );
@@ -398,13 +303,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
-  },
-  searchContainer: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    right: 80,
-    zIndex: 10,
   },
   svgContainer: {
     flex: 1,
